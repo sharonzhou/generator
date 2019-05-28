@@ -88,7 +88,7 @@ class BaseLogger(object):
             curve_img = curve_img.reshape(fig.canvas.get_width_height()[::-1] + (3,))
             self.summary_writer.add_image(name.replace('_', '/'), curve_img, global_step=self.global_step)
 
-    def visualize(self, inputs, logits, targets, phase, unique_id=None):
+    def visualize(self, inputs, logits, targets, phase, num_iter, unique_id=None):
         """Visualize predictions and targets in TensorBoard.
         Args:
             inputs: Inputs to the model.
@@ -102,32 +102,39 @@ class BaseLogger(object):
         """
 
         logits = logits.detach().to('cpu')
-        probs = F.sigmoid(logits).numpy()
+        logits = logits.numpy().copy()
+
+        logits_image_name = f'prediction-{num_iter}.png'
+        logits_image_path = os.path.join(self.log_dir, logits_image_name)
+        conformed_logits = np.squeeze(logits, 0)
+        conformed_logits = np.moveaxis(conformed_logits, 0, -1)
+        conformed_logits = util.normalize_to_image(conformed_logits)
+        logits_pil = Image.fromarray(conformed_logits.astype('uint8'))
+        logits_pil.save(logits_image_path)
 
         targets = targets.detach().to('cpu')
         targets = targets.numpy().copy()
 
-        num_visualized = 0
-        for i in range(self.num_visuals):
-            # input_np = inputs[i].detach().to('cpu').numpy()
-            # input_np = np.transpose(input_np, (1, 2, 0))
+        # input_np = inputs[i].detach().to('cpu').numpy()
+        # input_np = np.transpose(input_np, (1, 2, 0))
 
-            visuals = [targets, probs]
-            visuals_np = util.concat_images(visuals)
-            title = 'target_pred'
+        visuals = [targets, logits]
+        visuals_np = util.concat_images(visuals)
+        title = 'target_pred'
+        visuals_image_name = f'{title}-{num_iter}.png'
+        visuals_image_path = os.path.join(self.log_dir, visuals_image_name)
+        visuals_pil = Image.fromarray(visuals_np)
+        visuals_pil.save(visuals_image_path)
 
-            tag = f'{phase}/{title}/{i+1}'
-            if unique_id is not None:
-                tag += '_{}'.format(unique_id)
+        tag = f'{phase}/{title}/{num_iter}'
+        if unique_id is not None:
+            tag += '_{}'.format(unique_id)
 
-            self.summary_writer.add_image(tag, np.uint8(visuals_np), self.global_step)
-            num_visualized += 1
+        self.summary_writer.add_image(tag, np.uint8(visuals_np), self.global_step)
 
-            image_name = f'{title}-{i+1}.png'
-            image_path = os.path.join(self.log_dir, image_name)
-            visuals_pil = Image.fromarray(visuals_np)
-            visuals_pil.save(image_path)
 
+
+        num_visualized = 1
         return num_visualized
 
     def write(self, message, print_to_stdout=True):

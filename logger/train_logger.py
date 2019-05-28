@@ -55,7 +55,7 @@ class TrainLogger(BaseLogger):
 
         # Periodically visualize up to num_visuals training examples from the batch
         if self.iter % self.iters_per_visual == 0:
-            self.visualize(inputs, logits, targets, phase='train')
+            self.visualize(inputs, logits, targets, phase='train', num_iter=self.iter)
 
     def end_iter(self):
         """Log info for end of an iteration."""

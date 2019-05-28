@@ -62,6 +62,8 @@ def concat_images(images, spacing=10):
     # Remove batch size from shape and use var for indexing into shape
     images = [np.squeeze(image, 0) for image in images]
     images = [np.moveaxis(image, 0, -1) for image in images]
+    images = [normalize_to_image(image) for image in images]
+    images = [image.astype('uint8') for image in images]
     row_index = 0
     col_index = 1
     channel_index = 2
