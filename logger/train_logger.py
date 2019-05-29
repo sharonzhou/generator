@@ -10,11 +10,11 @@ class TrainLogger(BaseLogger):
         super(TrainLogger, self).__init__(args)
         """
         assert args.is_training
-        assert args.iters_per_print % args.batch_size == 0, "iters_per_print must be divisible by batch_size"
-        assert args.iters_per_visual % args.batch_size == 0, "iters_per_visual must be divisible by batch_size"
+        assert args.epochs_per_print % args.batch_size == 0, "epochs_per_print must be divisible by batch_size"
+        assert args.epochs_per_visual % args.batch_size == 0, "epochs_per_visual must be divisible by batch_size"
         """
-        self.iters_per_print = args.iters_per_print
-        self.iters_per_visual = args.iters_per_visual
+        self.epochs_per_print = args.epochs_per_print
+        self.epochs_per_visual = args.epochs_per_visual
         self.experiment_name = args.name
         self.num_epochs = args.num_epochs
         self.loss_meter = util.AverageMeter()
@@ -40,7 +40,7 @@ class TrainLogger(BaseLogger):
         self.loss_meter.update(loss, inputs.size(0))
 
         # Periodically write to the log and TensorBoard
-        if self.iter % self.iters_per_print == 0:
+        if self.epoch % self.epochs_per_print == 0:
 
             # Write a header for the log entry
             avg_time = (time() - self.iter_start_time) / self.batch_size
@@ -54,8 +54,8 @@ class TrainLogger(BaseLogger):
             self.write(message)
 
         # Periodically visualize up to num_visuals training examples from the batch
-        if self.iter % self.iters_per_visual == 0:
-            self.visualize(inputs, logits, targets, phase='train', num_iter=self.iter)
+        if self.epoch % self.epochs_per_visual == 0:
+            self.visualize(inputs, logits, targets, phase='train', epoch=self.epoch)
 
     def end_iter(self):
         """Log info for end of an iteration."""

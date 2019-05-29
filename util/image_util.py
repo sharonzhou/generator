@@ -47,6 +47,26 @@ def _make_rgb(image):
     else:
         return image
 
+def normalize_to_image(img):
+    """Normalizes img to be in the range 0-255."""
+    img *= 255
+    return img
+
+def convert_image_from_tensor(image):
+    # Remove batchsize
+    image = np.squeeze(image, 0)
+
+    # Move channel to last in shape
+    image = np.moveaxis(image, 0, -1)
+
+    # Normalize
+    image = normalize_to_image(image)
+
+    # Convert to ints
+    image = image.astype('uint8')
+
+    return image
+
 def concat_images(images, spacing=10):
     """Concatenate a list of images to form a single row image.
     Args:
@@ -55,15 +75,8 @@ def concat_images(images, spacing=10):
         spacing: Number of pixels between each image.
     Returns: Numpy array. Result of concatenating the images in images into a single row.
     """
-    # images = [_make_rgb(image) for image in images]
-    
     # Make array of all white pixels with enough space for all concatenated images
 
-    # Remove batch size from shape and use var for indexing into shape
-    images = [np.squeeze(image, 0) for image in images]
-    images = [np.moveaxis(image, 0, -1) for image in images]
-    images = [normalize_to_image(image) for image in images]
-    images = [image.astype('uint8') for image in images]
     row_index = 0
     col_index = 1
     channel_index = 2
@@ -72,8 +85,10 @@ def concat_images(images, spacing=10):
     assert len(images) > 0, 'Invalid argument: images must be non-empty'
     num_rows = images[0].shape[row_index]
     num_channels = images[0].shape[channel_index]
+
     assert all([img.shape[row_index] == num_rows and img.shape[channel_index] == num_channels for img in images]),\
         'Invalid image shapes: images must have same num_channels and height'
+
     num_cols = sum([img.shape[col_index] for img in images]) + spacing * (len(images) - 1)
     concatenated_images = np.full((num_rows, num_cols, num_channels), fill_value=255, dtype=np.uint8)
 
@@ -85,11 +100,6 @@ def concat_images(images, spacing=10):
         col += num_cols + spacing
 
     return concatenated_images 
-
-def normalize_to_image(img):
-    """Normalizes img to be in the range 0-255."""
-    img *= 255
-    return img
 
 class UnNormalize(object):
     """Unnormalizes an image tensor"""
