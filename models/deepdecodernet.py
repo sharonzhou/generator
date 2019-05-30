@@ -15,7 +15,7 @@ class Upsample(nn.Module):
         self.scale_factor = scale_factor
         self.mode = mode
     def forward(self, x):
-        return F.interpolate(x, scale_factor=self.scale_factor, mode=self.mode)
+        return F.interpolate(x, scale_factor=self.scale_factor, mode=self.mode, align_corners=True)
 
 class DeepDecoderNet(nn.Module):
     def __init__(self, num_channels=128, num_up=5, num_output_channels=3, **kwargs):

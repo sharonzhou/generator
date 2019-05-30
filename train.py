@@ -2,7 +2,6 @@
 train.py
 """
 import sys
-from time import time
 from pathlib import Path
 sys.path.append(str(Path(__file__).absolute().parent.parent))
 
@@ -56,7 +55,6 @@ def train(args):
     logger.log_hparams(args)
     while not logger.is_finished_training():
         logger.start_epoch()
-        logger.start_iter()
 
         # Input is noise tensor, target is image
         with torch.set_grad_enabled(True):
@@ -67,7 +65,7 @@ def train(args):
             loss = torch.zeros(1, requires_grad=True).to(args.device)
             loss = loss_fn(logits, target_image.to(args.device))
 
-            logger.log_iter(input_noise, logits, target_image, loss)
+            logger.log_status(input_noise, logits, target_image, loss)
             
             optimizer.zero_grad()
             loss.backward()
@@ -76,15 +74,8 @@ def train(args):
         metrics = {'loss': loss.item()}
         saver.save(logger.epoch, model, optimizer, args.device, metric_val=metrics.get(args.best_ckpt_metric, None))
         logger.end_epoch(metrics)
-        logger.end_iter()
 
 if __name__ == "__main__":
-    start_time = time()
-
     parser = TrainArgParser()
     args_ = parser.parse_args()
-    
     train(args_)
-
-    end_time = time()
-    print(f'Time of process: {end_time - start_time}')

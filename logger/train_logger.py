@@ -20,6 +20,7 @@ class TrainLogger(BaseLogger):
         self.num_epochs = args.num_epochs
         self.loss_meter = util.AverageMeter()
         self.pbar = tqdm(total=args.num_epochs)
+        self.train_start_time = time()
 
     def log_hparams(self, args):
         """Log all the hyper parameters in tensorboard"""
@@ -31,13 +32,8 @@ class TrainLogger(BaseLogger):
 
         self._log_text(hparams)
 
-
-    def start_iter(self):
-        """Log info for start of an iteration."""
-        self.iter_start_time = time()
-
-    def log_iter(self, inputs, logits, targets, loss):
-        """Log results from a training iteration."""
+    def log_status(self, inputs, logits, targets, loss):
+        """Log results and status of training."""
         loss = loss.item()
         self.loss_meter.update(loss, inputs.size(0))
 
@@ -45,40 +41,31 @@ class TrainLogger(BaseLogger):
         if self.epoch % self.epochs_per_print == 0:
 
             # Write a header for the log entry
-            avg_time = (time() - self.iter_start_time) / self.batch_size
-            message = '[epoch: {}, iter: {}, time: {:.2f}, loss: {:.3g}]' \
-                .format(self.epoch, self.iter, avg_time, self.loss_meter.avg)
+            duration = time() - self.train_start_time
+            hours, rem = divmod(duration, 3600)
+            minutes, seconds = divmod(rem, 60)
+            message = f'[epoch: {self.epoch}, time: {int(hours):0>2}:{int(minutes):0>2}:{seconds:05.2f}, batch loss: {self.loss_meter.avg:.3g}]'
 
             # Write all errors as scalars to the graph
             self._log_scalars({'batch_loss': self.loss_meter.avg}, print_to_stdout=False)
             self.loss_meter.reset()
 
             self.pbar.set_description(message)
-            # self.write(message) 
 
         # Periodically visualize up to num_visuals training examples from the batch
         if self.epoch % self.epochs_per_visual == 0:
             self.visualize(inputs, logits, targets, phase='train', epoch=self.epoch)
 
-    def end_iter(self):
-        """Log info for end of an iteration."""
-        self.iter += self.batch_size
-        self.global_step += self.batch_size
-
     def start_epoch(self):
         """Log info for start of an epoch."""
         self.epoch_start_time = time()
-        self.iter = 0
-        # self.write('[start of epoch {}]'.format(self.epoch))
 
-    #def end_epoch(self, metrics, curves):
     def end_epoch(self, metrics):
         """Log info for end of an epoch.
         Args:
             metrics: Dictionary of metric values. Items have format '{phase}_{metric}': value.
             curves: Dictionary of curves. Items have format '{phase}_{curve}: value.
         """
-        # self.write('[end of epoch {}, epoch time: {:.2g}]'.format(self.epoch, time() - self.epoch_start_time))
         self._log_scalars(metrics, print_to_stdout=False)
 
         """
