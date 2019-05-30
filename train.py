@@ -24,8 +24,10 @@ def train(args):
 
     # For deep decoder net input, reshape input noise and set num output channels parameter
     if args.model == 'DeepDecoderNet':
-        input_noise = util.get_deep_decoder_input_noise(args, input_noise, target_image.shape)
-        setattr(args, 'num_output_channels', target_image.shape[1])
+        setattr(args, 'target_image_shape', target_image.shape)
+        # TODO: reshape tensor, fill nans/zeros with 1s
+        #input_noise = F.pad(input=x, pad=(0, 1, 1, 1), mode='constant', value=0)
+        
 
     print(f'Input: {input_noise.shape}')
     print(f'Target: {target_image.shape}')

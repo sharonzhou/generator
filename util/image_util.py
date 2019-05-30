@@ -41,16 +41,21 @@ def get_input_noise(args, dist='gaussian', latent_dim=100):
 
     return noise_tensor
 
-def get_deep_decoder_input_noise(args, noise_tensor, image_shape, num_channels=128, num_up=5):
-    # Create fixed noise input (stays same across epochs)
+def get_deep_decoder_input_noise(image_shape, num_channels=128, num_up=5):
+    # Create custom fixed noise input (stays same across epochs) for deep decoder net
     total_upsample = 2 ** num_up
-    print('Shape of img', image_shape)
+
     height = int(image_shape[2] / total_upsample)
     width = int(image_shape[3] / total_upsample)
+
     noise_shape = [1, num_channels, height, width]
-   
-    noise_tensor.resize_(noise_shape)
+    noise_tensor = Variable(torch.zeros(noise_shape))
+
+    noise_tensor.data.uniform_() 
     noise_tensor /= 10.
+
+    if torch.cuda.is_available():
+        noise_tensor = noise_tensor.cuda()
 
     return noise_tensor
 

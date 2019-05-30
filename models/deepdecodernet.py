@@ -9,6 +9,8 @@ from torchvision import models, transforms
 import torch
 import torch.nn.functional as F
 
+import util
+
 class Upsample(nn.Module):
     def __init__(self,  scale_factor, mode):
         super(Upsample, self).__init__()
@@ -18,12 +20,17 @@ class Upsample(nn.Module):
         return F.interpolate(x, scale_factor=self.scale_factor, mode=self.mode, align_corners=True)
 
 class DeepDecoderNet(nn.Module):
-    def __init__(self, num_channels=128, num_up=5, num_output_channels=3, **kwargs):
+    def __init__(self, target_image_shape, num_channels=128, num_up=5, **kwargs):
         super(DeepDecoderNet, self).__init__()
+
+        self.target_image_shape = target_image_shape
 
         self.num_channels = num_channels # AKA. k
         self.num_up = num_up # AKA. num_channels_up
-        self.num_output_channels = num_output_channels
+        self.num_output_channels = target_image_shape[1]
+
+        # Added to account for standard noise tensor
+        self.fc = nn.Linear(25, 128 * 4 * 4)
         
         self.conv = nn.Conv2d(self.num_channels, self.num_channels, 1)
         self.relu = nn.ReLU(inplace=True)
@@ -51,8 +58,12 @@ class DeepDecoderNet(nn.Module):
         Parameters
         ----------
         X : tensor
-            Shape (batch_size x 3 x h x w)
+            Shape (batch_size x c x h x w)
         """
+        # If latent dim is vector of size 100, resize and resample?
+        #X = util.get_deep_decoder_input_noise(self.target_image_shape)
+        X = self.fc(X)
+        X = X.view(1, 128, 4, 4)
         out = self.model(X) 
         return out
 
