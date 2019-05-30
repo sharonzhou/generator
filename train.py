@@ -22,20 +22,24 @@ def train(args):
     target_image = util.get_target_image(args)
     input_noise = util.get_input_noise(args)
 
-    # For deep decoder net input, reshape input noise and set num output channels parameter
+    # For deep decoder net input, reshape input noise and do not parallelize
     if args.model == 'DeepDecoderNet':
         setattr(args, 'target_image_shape', target_image.shape)
-        # TODO: reshape tensor, fill nans/zeros with 1s
-        #input_noise = F.pad(input=x, pad=(0, 1, 1, 1), mode='constant', value=0)
+        
+        # Do not parallelize (reshape noise has issues in fc layer), use 1st gpu
+        gpu_ids = args.gpu_ids
+        gpu_id = [gpu_ids[0]]
+        setattr(args, 'gpu_ids', gpu_id)
         
 
     print(f'Input: {input_noise.shape}')
     print(f'Target: {target_image.shape}')
 
+    print(f'Logs: {args.save_dir}')
+
     # Load model
     model_fn = models.__dict__[args.model]
     model = model_fn(**vars(args))
-    # model = models.DeepDecoderNet(num_output_channels=target_image.shape[1])
     model = nn.DataParallel(model, args.gpu_ids)
     model = model.to(args.device)
     model.train()
@@ -47,11 +51,7 @@ def train(args):
 
     # Get logger and saver
     logger = TrainLogger(args)
-    if 'loss' in args.best_ckpt_metric:
-        maximize_metric = False
-    else:
-        maximize_metric = True
-    saver = ModelSaver(args.save_dir, args.epochs_per_save, args.max_ckpts, args.best_ckpt_metric, maximize_metric)
+    saver = ModelSaver(args.save_dir, args.epochs_per_save, args.max_ckpts, args.best_ckpt_metric)
 
     # Train model
     logger.log_hparams(args)
