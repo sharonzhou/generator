@@ -18,8 +18,8 @@ class BaseArgParser(object):
                                  help='Name of run')
 
         # Model args
-        self.parser.add_argument('--model', type=str, choices=('deepdecodernet'), default='deepdecodernet',
-                                 help='Model to use. Basic conv1x1 is currently the only model available')
+        self.parser.add_argument('--model', type=str, choices=('DeepDecoderNet'), default='DeepDecoderNet',
+                                 help='Model to use. Basic conv1x1 from the Deep Decoder paper is currently the only model available')
 
         self.parser.add_argument('--batch_size', type=int, default=1,
                                  help='Batch size.')
@@ -47,7 +47,8 @@ class BaseArgParser(object):
         self.parser.add_argument('--toy', type=util.str_to_bool, default=False, help='Use small dataset or not.')
 
         self.parser.add_argument('--num_visuals', type=int, default=4, help='Number of visuals to display per eval.')
-
+        
+    
     def parse_args(self):
         args = self.parser.parse_args()
 

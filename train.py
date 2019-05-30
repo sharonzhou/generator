@@ -2,6 +2,7 @@
 train.py
 """
 import sys
+from time import time
 from pathlib import Path
 sys.path.append(str(Path(__file__).absolute().parent.parent))
 
@@ -20,15 +21,20 @@ def train(args):
     
     # Instantiate input and target: Input is noise tensor, target is image
     target_image = util.get_target_image(args)
-    input_noise = util.get_input_noise(args, target_image.shape)
+    input_noise = util.get_input_noise(args)
+
+    # For deep decoder net input, reshape input noise and set num output channels parameter
+    if args.model == 'DeepDecoderNet':
+        input_noise = util.get_deep_decoder_input_noise(args, input_noise, target_image.shape)
+        setattr(args, 'num_output_channels', target_image.shape[1])
 
     print(f'Input: {input_noise.shape}')
     print(f'Target: {target_image.shape}')
 
-    # load model
+    # Load model
     model_fn = models.__dict__[args.model]
-    # model = model_fn(**vars(args))
-    model = models.DeepDecoderNet(num_output_channels=target_image.shape[1])
+    model = model_fn(**vars(args))
+    # model = models.DeepDecoderNet(num_output_channels=target_image.shape[1])
     model = nn.DataParallel(model, args.gpu_ids)
     model = model.to(args.device)
     model.train()
@@ -69,11 +75,16 @@ def train(args):
 
         metrics = {'loss': loss.item()}
         saver.save(logger.epoch, model, optimizer, args.device, metric_val=metrics.get(args.best_ckpt_metric, None))
-        print(metrics)
         logger.end_epoch(metrics)
         logger.end_iter()
 
 if __name__ == "__main__":
+    start_time = time()
+
     parser = TrainArgParser()
     args_ = parser.parse_args()
+    
     train(args_)
+
+    end_time = time()
+    print(f'Time of process: {end_time - start_time}')

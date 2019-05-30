@@ -24,17 +24,32 @@ def get_target_image(args):
     img = torch.unsqueeze(img, 0)
 
     return img
-    
-def get_input_noise(args, image_shape, num_channels=128, num_up=5):
+   
+def get_input_noise(args, dist='gaussian', latent_dim=100):
+    # Sample a fixed noise vector z \in R^latent_dim
+    noise_tensor = Variable(torch.FloatTensor(latent_dim))
+
+    if dist == 'uniform':
+        # Sample with uniform distribution
+        noise_tensor.data.uniform_(-1, 1)
+    else:
+        # Sample with spherical gaussian z \in R^latent_dim ~ N(0, I)
+        noise_tensor.data.normal_(mean=0, std=1) 
+
+    if torch.cuda.is_available():
+        noise_tensor = noise_tensor.cuda()
+
+    return noise_tensor
+
+def get_deep_decoder_input_noise(args, noise_tensor, image_shape, num_channels=128, num_up=5):
     # Create fixed noise input (stays same across epochs)
     total_upsample = 2 ** num_up
     print('Shape of img', image_shape)
     height = int(image_shape[2] / total_upsample)
     width = int(image_shape[3] / total_upsample)
     noise_shape = [1, num_channels, height, width]
-    
-    noise_tensor = Variable(torch.zeros(noise_shape))
-    noise_tensor.uniform_()
+   
+    noise_tensor.resize_(noise_shape)
     noise_tensor /= 10.
 
     return noise_tensor

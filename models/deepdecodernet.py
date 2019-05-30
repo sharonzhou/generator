@@ -19,7 +19,7 @@ class Upsample(nn.Module):
 
 class DeepDecoderNet(nn.Module):
     def __init__(self, num_channels=128, num_up=5, num_output_channels=3, **kwargs):
-        super().__init__()
+        super(DeepDecoderNet, self).__init__()
 
         self.num_channels = num_channels # AKA. k
         self.num_up = num_up # AKA. num_channels_up

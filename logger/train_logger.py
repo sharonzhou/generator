@@ -1,6 +1,7 @@
-import util
-
 from time import time
+from tqdm import tqdm
+
+import util
 from .base_logger import BaseLogger
 
 
@@ -18,6 +19,7 @@ class TrainLogger(BaseLogger):
         self.experiment_name = args.name
         self.num_epochs = args.num_epochs
         self.loss_meter = util.AverageMeter()
+        self.pbar = tqdm(total=args.num_epochs)
 
     def log_hparams(self, args):
         """Log all the hyper parameters in tensorboard"""
@@ -51,7 +53,8 @@ class TrainLogger(BaseLogger):
             self._log_scalars({'batch_loss': self.loss_meter.avg}, print_to_stdout=False)
             self.loss_meter.reset()
 
-            self.write(message)
+            self.pbar.set_description(message)
+            # self.write(message) 
 
         # Periodically visualize up to num_visuals training examples from the batch
         if self.epoch % self.epochs_per_visual == 0:
@@ -66,7 +69,7 @@ class TrainLogger(BaseLogger):
         """Log info for start of an epoch."""
         self.epoch_start_time = time()
         self.iter = 0
-        self.write('[start of epoch {}]'.format(self.epoch))
+        # self.write('[start of epoch {}]'.format(self.epoch))
 
     #def end_epoch(self, metrics, curves):
     def end_epoch(self, metrics):
@@ -75,14 +78,15 @@ class TrainLogger(BaseLogger):
             metrics: Dictionary of metric values. Items have format '{phase}_{metric}': value.
             curves: Dictionary of curves. Items have format '{phase}_{curve}: value.
         """
-        self.write('[end of epoch {}, epoch time: {:.2g}]'.format(self.epoch, time() - self.epoch_start_time))
-        self._log_scalars(metrics)
+        # self.write('[end of epoch {}, epoch time: {:.2g}]'.format(self.epoch, time() - self.epoch_start_time))
+        self._log_scalars(metrics, print_to_stdout=False)
 
         """
         self._plot_curves(curves)
         """
 
         self.epoch += 1
+        self.pbar.update(1)
 
     def is_finished_training(self):
         """Return True if finished training, otherwise return False."""
