@@ -30,12 +30,9 @@ def train(args):
         gpu_ids = args.gpu_ids
         gpu_id = [gpu_ids[0]]
         setattr(args, 'gpu_ids', gpu_id)
-        
 
     print(f'Input: {input_noise.shape}')
     print(f'Target: {target_image.shape}')
-
-    print(f'Logs: {args.save_dir}')
 
     # Load model
     model_fn = models.__dict__[args.model]
@@ -52,6 +49,9 @@ def train(args):
     # Get logger and saver
     logger = TrainLogger(args)
     saver = ModelSaver(args.save_dir, args.epochs_per_save, args.max_ckpts, args.best_ckpt_metric)
+    
+    print(f'Logs: {logger.log_dir}')
+    print(f'Ckpts: {args.save_dir}')
 
     # Train model
     logger.log_hparams(args)
