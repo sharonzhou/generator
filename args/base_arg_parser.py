@@ -47,7 +47,8 @@ class BaseArgParser(object):
         self.parser.add_argument('--toy', type=util.str_to_bool, default=False, help='Use small dataset or not.')
 
         self.parser.add_argument('--num_visuals', type=int, default=4, help='Number of visuals to display per eval.')
-        
+
+        self.parser.add_argument('--use_custom_input_noise', action='store_true', default=False, help='Use custom noise -- relevant only for Deep Decoder Net right now.')
     
     def parse_args(self):
         args = self.parser.parse_args()

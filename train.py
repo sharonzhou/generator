@@ -25,11 +25,14 @@ def train(args):
     # For deep decoder net input, reshape input noise and do not parallelize
     if args.model == 'DeepDecoderNet':
         setattr(args, 'target_image_shape', target_image.shape)
-        
-        # Do not parallelize (reshape noise has issues in fc layer), use 1st gpu
-        gpu_ids = args.gpu_ids
-        gpu_id = [gpu_ids[0]]
-        setattr(args, 'gpu_ids', gpu_id)
+       
+        if args.use_custom_input_noise:
+            input_noise = util.get_deep_decoder_input_noise(target_image.shape)
+        else:
+            # Do not parallelize (reshape noise has issues in fc layer), use 1st gpu
+            gpu_ids = args.gpu_ids
+            gpu_id = [gpu_ids[0]]
+            setattr(args, 'gpu_ids', gpu_id)
 
     print(f'Input: {input_noise.shape}')
     print(f'Target: {target_image.shape}')
