@@ -22,6 +22,10 @@ def train(args):
     target_image = util.get_target_image(args)
     input_noise = util.get_input_noise(args)
 
+    # Instantiate mask
+    mask = util.get_mask(args)
+    setattr(args, 'mask', mask)
+
     # For deep decoder net input, reshape input noise and do not parallelize
     if args.model == 'DeepDecoderNet':
         setattr(args, 'target_image_shape', target_image.shape)
@@ -36,6 +40,7 @@ def train(args):
 
     print(f'Input: {input_noise.shape}')
     print(f'Target: {target_image.shape}')
+    print(f'Mask: {mask.shape}')
 
     # Load model
     model_fn = models.__dict__[args.model]

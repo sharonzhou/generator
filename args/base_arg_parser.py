@@ -27,12 +27,18 @@ class BaseArgParser(object):
         self.parser.add_argument('--ckpt_path', type=str, default='',
                                  help='Path to checkpoint to load. If empty, start from scratch.')
 
-        self.parser.add_argument('--image_name', type=str, default='lena_512.png',
+        self.parser.add_argument('--image_name', type=str, default='lena.png',
                                  help='Image name to train on (to compress).')
+
+        self.parser.add_argument('--mask_name', type=str, default='512_0.png',
+                                 help='Mask name to avoid backproping gradients through.')
         
         self.parser.add_argument('--data_dir', type=str, default='images',
                                  help='Path to image(s) to run through generator.')
 
+        self.parser.add_argument('--mask_dir', type=str, default='masks',
+                                 help='Path to mask(s) to run through generator.')
+        
         self.parser.add_argument('--gpu_ids', type=str, default='0,1,2,3',
                                  help='Comma-separated list of GPU IDs. Use -1 for CPU.')
 

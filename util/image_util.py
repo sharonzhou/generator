@@ -10,11 +10,12 @@ from PIL import Image
 import torchvision.transforms as transforms
 from torch.autograd import Variable
 
-def get_target_image(args):
+
+def get_image(img_dir, img_name):
     # Load data and image
-    data_dir = Path(args.data_dir)
-    img_path = data_dir / f'{args.image_name}'
-    img = Image.open(img_path)
+    img_dir = Path(img_dir)
+    img_path = img_dir / img_name
+    img = Image.open(img_path).convert('RGB')
 
     # Transform image
     transforms_list = []
@@ -25,6 +26,16 @@ def get_target_image(args):
 
     return img
    
+def get_target_image(args):
+    return get_image(args.data_dir, args.image_name)
+
+def get_mask(args):
+    if not args.mask_dir and not args.mask_name:
+        return None
+    else:
+        # Load mask
+        return get_image(args.mask_dir, args.mask_name)
+
 def get_input_noise(args, dist='gaussian', latent_dim=100):
     # Sample a fixed noise vector z \in R^latent_dim
     noise_tensor = Variable(torch.FloatTensor(latent_dim))
