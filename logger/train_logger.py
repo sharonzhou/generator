@@ -67,11 +67,6 @@ class TrainLogger(BaseLogger):
             curves: Dictionary of curves. Items have format '{phase}_{curve}: value.
         """
         self._log_scalars(metrics, print_to_stdout=False)
-
-        """
-        self._plot_curves(curves)
-        """
-
         self.epoch += 1
         self.pbar.update(1)
 
