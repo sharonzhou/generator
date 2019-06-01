@@ -71,32 +71,63 @@ def train(args):
             input_noise.to(args.device)
             logits = model.forward(input_noise)
 
-            # Masked loss
+            # With backprop, calculate (1) masked loss - loss when mask is applied
+            # Without backprop, calculate (2) obscured loss - region obscured by mask
+            # and (3) loss - loss on the entire image
             masked_loss = torch.zeros(1, requires_grad=True).to(args.device)
+            loss = torch.zeros(1).to(args.device)
+            obscured_loss = torch.zeros(1).to(args.device)
             
             if mask is None:
                 masked_logits = logits
                 masked_target_image = target_image
+
+                obscured_logits = logits
+                obscured_target_image = target_image
             else:
-                # TODO: debug shapes here
                 masked_logits = logits[mask] 
                 masked_target_image = target_image[mask]
+                
+                obscured_logits = logits[~mask] 
+                obscured_target_image = target_image[~mask]
+
             masked_loss = loss_fn(masked_logits, masked_target_image.to(args.device))
-           
-            loss = torch.zeros(1).to(args.device)
+          
             with torch.no_grad():
+                obscured_loss = loss_fn(obscured_logits, obscured_target_image.to(args.device))
                 loss = loss_fn(logits, target_image.to(args.device))
 
-            logger.log_status(input_noise, masked_logits, logits, target_image, masked_loss, loss)
+            logger.log_status(inputs=input_noise,
+                              masked_logits=masked_logits,
+                              obscured_logits=obscured_logits,
+                              logits=logits,
+                              targets=target_image,
+                              masked_loss=masked_loss,
+                              obscured_loss=obscured_loss,
+                              loss=loss,
+                              save_preds=args.save_preds,
+                              )
             
             optimizer.zero_grad()
             masked_loss.backward()
             optimizer.step()
-
-        # TODO: Create function for metrics
-        metrics = {'masked_loss': masked_loss.item(), 'loss': loss.item()}
+        
+        # TODO: Make a function for metrics - or at least make sure dict includes all possible best ckpt metrics
+        metrics = {'masked_loss': masked_loss.item()}
         saver.save(logger.epoch, model, optimizer, args.device, metric_val=metrics.get(args.best_ckpt_metric, None))
-        logger.end_epoch(metrics)
+        logger.end_epoch()
+    # Last log after everything completes
+    logger.log_status(inputs=input_noise,
+                      masked_logits=masked_logits,
+                      obscured_logits=obscured_logits,
+                      logits=logits,
+                      targets=target_image,
+                      masked_loss=masked_loss,
+                      obscured_loss=obscured_loss,
+                      loss=loss,
+                      save_preds=args.save_preds,
+                      force_visualize=True,
+                      )
 
 if __name__ == "__main__":
     parser = TrainArgParser()

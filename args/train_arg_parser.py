@@ -54,5 +54,7 @@ class TrainArgParser(BaseArgParser):
                                  help='Loss function to use.')
         
         # Model args
-        self.parser.add_argument('--use_pretrained', action='store_true', default=False,
-                                 help='If True, load a pretrained model from ckpt_path.')
+        self.parser.add_argument('--use_pretrained', action='store_true', help='If True, load a pretrained model from ckpt_path.')
+
+        # Prediction args
+        self.parser.add_argument('--save_preds', action='store_true', help='Save prediction every visualize step.')

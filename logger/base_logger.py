@@ -99,28 +99,17 @@ class BaseLogger(object):
         logits = logits.numpy().copy()
         logits_np = util.convert_image_from_tensor(logits)
 
-        if make_separate_prediction_img:
-            logits_image_name = f'prediction-{epoch}.png'
-            logits_image_path = os.path.join(self.log_dir, logits_image_name)
-           #  conformed_logits = np.squeeze(logits, 0)
-           #  conformed_logits = np.moveaxis(conformed_logits, 0, -1)
-           #  conformed_logits = util.normalize_to_image(conformed_logits)
-           #  logits_pil = Image.fromarray(conformed_logits.astype('uint8'))
-            logits_pil = Image.fromarray(logits_np)
-            logits_pil.save(logits_image_path)
-
         targets = targets.detach().to('cpu')
         targets = targets.numpy().copy()
         targets_np = util.convert_image_from_tensor(targets)
 
-        # input_np = inputs[i].detach().to('cpu').numpy()
-        # input_np = np.transpose(input_np, (1, 2, 0))
+        abs_diff = np.abs(targets_np - logits_np)
 
-        visuals = [logits_np, targets_np]
+        visuals = [logits_np, targets_np, abs_diff]
         visuals_np = util.concat_images(visuals)
         visuals_pil = Image.fromarray(visuals_np)
         
-        title = 'target_pred'
+        title = 'target_pred_diff'
         visuals_image_name = f'{title}-{epoch}.png'
         visuals_image_path = os.path.join(self.log_dir, visuals_image_name)
         
