@@ -34,7 +34,9 @@ def get_mask(args):
         return None
     else:
         # Load mask
-        return get_image(args.mask_dir, args.mask_name)
+        mask = get_image(args.mask_dir, args.mask_name)
+        mask = mask.byte()
+        return mask
 
 def get_input_noise(args, dist='gaussian', latent_dim=100):
     # Sample a fixed noise vector z \in R^latent_dim

@@ -71,17 +71,30 @@ def train(args):
             input_noise.to(args.device)
             logits = model.forward(input_noise)
 
-            # Initialize loss to 0
-            loss = torch.zeros(1, requires_grad=True).to(args.device)
-            loss = loss_fn(logits, target_image.to(args.device))
+            # Masked loss
+            masked_loss = torch.zeros(1, requires_grad=True).to(args.device)
+            
+            if mask is None:
+                masked_logits = logits
+                masked_target_image = target_image
+            else:
+                # TODO: debug shapes here
+                masked_logits = logits[mask] 
+                masked_target_image = target_image[mask]
+            masked_loss = loss_fn(masked_logits, masked_target_image.to(args.device))
+           
+            loss = torch.zeros(1).to(args.device)
+            with torch.no_grad():
+                loss = loss_fn(logits, target_image.to(args.device))
 
-            logger.log_status(input_noise, logits, target_image, loss)
+            logger.log_status(input_noise, masked_logits, logits, target_image, masked_loss, loss)
             
             optimizer.zero_grad()
-            loss.backward()
+            masked_loss.backward()
             optimizer.step()
 
-        metrics = {'loss': loss.item()}
+        # TODO: Create function for metrics
+        metrics = {'masked_loss': masked_loss.item(), 'loss': loss.item()}
         saver.save(logger.epoch, model, optimizer, args.device, metric_val=metrics.get(args.best_ckpt_metric, None))
         logger.end_epoch(metrics)
 

@@ -72,7 +72,7 @@ class DeepDecoderNet(BaseNet):
         
         self.model = nn.Sequential(*layers)
 
-    def forward_pass(self, X):
+    def forward(self, X):
         """
         Parameters
         ----------

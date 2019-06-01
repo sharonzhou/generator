@@ -31,12 +31,13 @@ class BaseNet(nn.Module):
         raise NotImplementedError('Subclass of BaseNet should implement forward pass.')
 
     def forward(self, X):
-        if self.mask is None:
-            return self.forward_pass(X)
-        else:
-            out = self.forward_pass(X)
-            self.mask_pass()
-            return out
+        raise NotImplementedError('Subclass of BaseNet should implement forward pass.')
+      #  if self.mask is None:
+      #      return self.forward_pass(X)
+      #  else:
+      #      out = self.forward_pass(X)
+      #      self.mask_pass()
+      #      return out
 
     def args_dict(self):
         model_args = {}

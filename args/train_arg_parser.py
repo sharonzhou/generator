@@ -20,7 +20,7 @@ class TrainArgParser(BaseArgParser):
                                  help='Number of epochs between saving a checkpoint to save_dir.')
         self.parser.add_argument('--max_ckpts', type=int, default=5,
                                  help='Number of recent ckpts to keep before overwriting old ones.')
-        self.parser.add_argument('--best_ckpt_metric', type=str, default='loss', choices=('loss'),
+        self.parser.add_argument('--best_ckpt_metric', type=str, default='masked_loss', choices=('masked_loss'),
                                  help='Metric used to determine which checkpoint is best.')
 
         # Learning rate args

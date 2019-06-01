@@ -35,17 +35,11 @@ class BaseLogger(object):
         self.log_path = os.path.join(self.save_dir, '{}.log'.format(args.name))
 
         self.epoch = args.start_epoch
-        # Current iteration in epoch (i.e., # examples seen in the current epoch)
-        self.iter = 0
-        # Current iteration overall (i.e., total # of examples seen)
-        self.global_step = round_down((self.epoch - 1), args.batch_size)
-        self.iter_start_time = None
-        self.epoch_start_time = None
 
 
     def _log_text(self, text_dict):
         for k, v in text_dict.items():
-            self.summary_writer.add_text(k, str(v), self.global_step)
+            self.summary_writer.add_text(k, str(v), self.epoch)
 
 
     def _log_scalars(self, scalar_dict, print_to_stdout=True):
@@ -54,7 +48,7 @@ class BaseLogger(object):
             if print_to_stdout:
                 self.write('[{}: {:.3g}]'.format(k, v))
             k = k.replace('_', '/')  # Group in TensorBoard by phase
-            self.summary_writer.add_scalar(k, v, self.global_step)
+            self.summary_writer.add_scalar(k, v, self.epoch)
 
     def _plot_curves(self, curves_dict):
         """Plot all curves in a dict as RGB images to TensorBoard."""
@@ -86,7 +80,7 @@ class BaseLogger(object):
 
             curve_img = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
             curve_img = curve_img.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-            self.summary_writer.add_image(name.replace('_', '/'), curve_img, global_step=self.global_step)
+            self.summary_writer.add_image(name.replace('_', '/'), curve_img, global_step=self.epoch)
 
     def visualize(self, inputs, logits, targets, phase, epoch, unique_id=None, make_separate_prediction_img=False):
         """Visualize predictions and targets in TensorBoard.
@@ -136,7 +130,7 @@ class BaseLogger(object):
         if unique_id is not None:
             tag += '_{}'.format(unique_id)
 
-        self.summary_writer.add_image(tag, np.uint8(visuals_np), self.global_step)
+        self.summary_writer.add_image(tag, np.uint8(visuals_np), self.epoch)
 
     def write(self, message, print_to_stdout=True):
         """Write a message to the log. If print_to_stdout is True, also print to stdout."""

@@ -18,6 +18,7 @@ class TrainLogger(BaseLogger):
         self.epochs_per_visual = args.epochs_per_visual
         self.experiment_name = args.name
         self.num_epochs = args.num_epochs
+        self.masked_loss_meter = util.AverageMeter()
         self.loss_meter = util.AverageMeter()
         self.pbar = tqdm(total=args.num_epochs)
         self.train_start_time = time()
@@ -32,8 +33,11 @@ class TrainLogger(BaseLogger):
 
         self._log_text(hparams)
 
-    def log_status(self, inputs, logits, targets, loss):
+    def log_status(self, inputs, masked_logits, logits, targets, masked_loss, loss):
         """Log results and status of training."""
+        masked_loss = loss.item()
+        self.masked_loss_meter.update(masked_loss, inputs.size(0))
+        
         loss = loss.item()
         self.loss_meter.update(loss, inputs.size(0))
 
@@ -44,17 +48,23 @@ class TrainLogger(BaseLogger):
             duration = time() - self.train_start_time
             hours, rem = divmod(duration, 3600)
             minutes, seconds = divmod(rem, 60)
-            message = f'[epoch: {self.epoch}, time: {int(hours):0>2}:{int(minutes):0>2}:{seconds:05.2f}, batch loss: {self.loss_meter.avg:.3g}]'
-
+            
+            message = f'[epoch: {self.epoch}, time: {int(hours):0>2}:{int(minutes):0>2}:{seconds:05.2f}, masked loss: {self.masked_loss_meter.avg:.3g}, loss: {self.loss_meter.avg:.3g}]'
+            self.pbar.set_description(message)
+            
             # Write all errors as scalars to the graph
-            self._log_scalars({'batch_loss': self.loss_meter.avg}, print_to_stdout=False)
+            self._log_scalars({'masked_loss': self.masked_loss_meter.avg}, print_to_stdout=False)
+            self.masked_loss_meter.reset()
+            
+            self._log_scalars({'loss': self.loss_meter.avg}, print_to_stdout=False)
             self.loss_meter.reset()
 
-            self.pbar.set_description(message)
 
         # Periodically visualize up to num_visuals training examples from the batch
         if self.epoch % self.epochs_per_visual == 0:
             self.visualize(inputs, logits, targets, phase='train', epoch=self.epoch)
+            # Does not make sense to show masked logits... since not image size anymore
+            # self.visualize(inputs, masked_logits, targets, phase='train', epoch=self.epoch, is_masked=True)
 
     def start_epoch(self):
         """Log info for start of an epoch."""
