@@ -23,6 +23,9 @@ def get_image(img_dir, img_name):
     transform = transforms.Compose([t for t in transforms_list if t])
     img = transform(img)
     img = torch.unsqueeze(img, 0)
+   
+    if torch.cuda.is_available():
+        img = img.cuda()
 
     return img
    
@@ -30,13 +33,17 @@ def get_target_image(args):
     return get_image(args.data_dir, args.image_name)
 
 def get_mask(args):
-    if not args.mask_dir and not args.mask_name:
-        return None
+    if not args.mask_dir or not args.mask_name:
+        mask = torch.ones(args.target_image_shape)
     else:
         # Load mask
         mask = get_image(args.mask_dir, args.mask_name)
-        mask = mask.byte()
-        return mask
+        mask = mask.float()
+    
+    if torch.cuda.is_available():
+        mask = mask.cuda()
+  
+    return mask
 
 def get_input_noise(args, dist='gaussian', latent_dim=100):
     # Sample a fixed noise vector z \in R^latent_dim
@@ -82,7 +89,7 @@ def _make_rgb(image):
 
 def normalize_to_image(img):
     """Normalizes img to be in the range 0-255."""
-    img *= 255
+    img *= 255.
     return img
 
 def convert_image_from_tensor(image):
@@ -95,8 +102,8 @@ def convert_image_from_tensor(image):
     # Normalize
     image = normalize_to_image(image)
 
-    # Convert to ints
-    image = image.astype('uint8')
+    # Convert to floats
+    image = image.astype(float)
 
     return image
 

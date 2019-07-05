@@ -26,7 +26,7 @@ class BaseLogger(object):
         self.num_visuals = args.num_visuals
 
         # log dir, is the directory for tensorboard logs: <project_dir>/logs/
-        log_dir = os.path.join('logs', args.name + '_' + datetime.now().strftime('%b%d_%H%M'))
+        log_dir = os.path.join('logs', args.name + '_' + datetime.now().strftime('%b%d_%H%M%S%f'))
         self.log_dir = log_dir
 
         self.summary_writer = SummaryWriter(log_dir=log_dir)
@@ -81,6 +81,35 @@ class BaseLogger(object):
             curve_img = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
             curve_img = curve_img.reshape(fig.canvas.get_width_height()[::-1] + (3,))
             self.summary_writer.add_image(name.replace('_', '/'), curve_img, global_step=self.epoch)
+
+    def debug_visualize(self, tensors, unique_id=None):
+        """Visualize in TensorBoard.
+        Args:
+            tensors: Tensor or list of Tensors to be visualized.
+        """
+        # If only one tensor not in a list
+        if not isinstance(tensors, list):
+            tensors = [tensors]
+        
+        visuals = []
+        for tensor in tensors:
+            tensor = tensor.detach().to('cpu')
+            tensor = tensor.numpy().copy()
+            tensor_np = util.convert_image_from_tensor(tensor)
+            visuals.append(tensor_np)
+
+        if len(visuals) > 1:
+            visuals_np = util.concat_images(visuals)
+            visuals_pil = Image.fromarray(visuals_np)
+        else:
+            visuals_pil = Image.fromarray(visuals[0])
+
+        title = 'debug'
+        tag = f'{title}'
+        if unique_id is not None:
+            tag += '_{}'.format(unique_id)
+
+        self.summary_writer.add_image(tag, np.uint8(visuals_np), self.epoch)
 
     def visualize(self, inputs, logits, targets, phase, epoch, unique_id=None, make_separate_prediction_img=False):
         """Visualize predictions and targets in TensorBoard.

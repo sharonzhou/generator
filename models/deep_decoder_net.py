@@ -60,7 +60,7 @@ class DeepDecoderNet(BaseNet):
         self.bn = nn.BatchNorm2d(self.num_channels, affine=True)
         self.last_conv = nn.Conv2d(self.num_channels, self.num_output_channels, 1)
         self.sigmoid = nn.Sigmoid()
-       
+
         layers = []
         for i in range(self.num_up):
             layers.append(self.conv)

@@ -42,10 +42,11 @@ class TrainLogger(BaseLogger):
         masked_loss = masked_loss.item()
         obscured_loss = obscured_loss.item()
         loss = loss.item()
+        batch_size = inputs.size(0)
 
-        self.masked_loss_meter.update(masked_loss, inputs.size(0))
-        self.obscured_loss_meter.update(obscured_loss, inputs.size(0))
-        self.loss_meter.update(loss, inputs.size(0))
+        self.masked_loss_meter.update(masked_loss, batch_size)
+        self.obscured_loss_meter.update(obscured_loss, batch_size)
+        self.loss_meter.update(loss, batch_size)
 
         # Periodically write to the log and TensorBoard
         if self.epoch % self.epochs_per_print == 0:
@@ -59,9 +60,9 @@ class TrainLogger(BaseLogger):
             self.pbar.set_description(message)
             
             # Write all errors as scalars to the graph
-            self._log_scalars({'masked_loss': self.masked_loss_meter.avg}, print_to_stdout=False)
-            self._log_scalars({'obscured_loss': self.obscured_loss_meter.avg}, print_to_stdout=False)
-            self._log_scalars({'loss': self.loss_meter.avg}, print_to_stdout=False)
+            self._log_scalars({'loss_masked': self.masked_loss_meter.avg}, print_to_stdout=False)
+            self._log_scalars({'loss_obscured': self.obscured_loss_meter.avg}, print_to_stdout=False)
+            self._log_scalars({'loss_all': self.loss_meter.avg}, print_to_stdout=False)
 
         # Periodically visualize up to num_visuals training examples from the batch
         if self.epoch % self.epochs_per_visual == 0 or force_visualize:

@@ -11,7 +11,7 @@ def get_loss_fn(loss_name, args=None):
         Differentiable criterion that can be applied to targets, logits.
     """
     if loss_name == "mse":
-        loss_fn = nn.MSELoss()
+        loss_fn = nn.MSELoss(reduction='none')
     else:
         loss_fn = nn.BCEWithLogitsLoss()
     return loss_fn

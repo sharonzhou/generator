@@ -24,7 +24,7 @@ class TrainArgParser(BaseArgParser):
                                  help='Metric used to determine which checkpoint is best.')
 
         # Learning rate args
-        self.parser.add_argument('--learning_rate', type=float, default=1e-3,
+        self.parser.add_argument('--learning_rate', type=float, default=3e-3,
                                  help='Initial learning rate.')
         self.parser.add_argument('--lr_scheduler', type=str, default='step', choices=('step', 'multi_step', 'plateau'),
                                  help='LR scheduler to use.')

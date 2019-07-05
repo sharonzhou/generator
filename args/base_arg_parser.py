@@ -30,7 +30,7 @@ class BaseArgParser(object):
         self.parser.add_argument('--image_name', type=str, default='lena.png',
                                  help='Image name to train on (to compress).')
 
-        self.parser.add_argument('--mask_name', type=str, default='512_0.png',
+        self.parser.add_argument('--mask_name', type=str, default=None,
                                  help='Mask name to avoid backproping gradients through.')
         
         self.parser.add_argument('--data_dir', type=str, default='images',
