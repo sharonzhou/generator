@@ -46,7 +46,7 @@ class TrainArgParser(BaseArgParser):
         self.parser.add_argument('--weight_decay', type=float, default=0,
                                  help='Weight decay (i.e., L2 regularization factor).')
         self.parser.add_argument('--dropout_prob', type=float, default=0.0, help='Dropout probability.')
-        self.parser.add_argument('--num_epochs', type=int, default=5000,
+        self.parser.add_argument('--num_epochs', type=int, default=15000,
                                  help='Number of epochs to train. If 0, train forever.')
 
         # Loss args

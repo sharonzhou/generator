@@ -50,6 +50,12 @@ def train(args):
     model = model.to(args.device)
     model.train()
 
+    # Print model parameters
+    print(model.parameters())
+    print('Model parameters: name, size, mean, std')
+    for name, param in model.named_parameters():
+        print(name, param.size(), torch.mean(param), torch.std(param))
+
     # Get optimizer and loss
     parameters = model.parameters()
     optimizer = util.get_optimizer(parameters, args)

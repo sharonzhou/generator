@@ -57,16 +57,16 @@ class DeepDecoderNet(BaseNet):
         self.conv = nn.Conv2d(self.num_channels, self.num_channels, 1)
         self.relu = nn.ReLU(inplace=True)
         self.up = Upsample(scale_factor=2, mode='bilinear')
-        self.bn = nn.BatchNorm2d(self.num_channels, affine=True)
+        self.bn = nn.BatchNorm2d(self.num_channels)
         self.last_conv = nn.Conv2d(self.num_channels, self.num_output_channels, 1)
         self.sigmoid = nn.Sigmoid()
 
         layers = []
         for i in range(self.num_up):
-            layers.append(self.conv)
             layers.append(self.up)
-            layers.append(self.relu)
+            layers.append(self.conv)
             layers.append(self.bn)
+            layers.append(self.relu)
         layers.append(self.last_conv)
         layers.append(self.sigmoid)
         
@@ -84,8 +84,24 @@ class DeepDecoderNet(BaseNet):
             X = self.fc(X)
             X = X.view(1, self.num_channels, self.input_height, self.input_width)
 
+        for i in range(self.num_up):
+            X = self.up(X)
+            print('up_sample', torch.mean(X), torch.std(X))
+            X = self.conv(X)
+            print('conv', torch.mean(X), torch.std(X))
+            X = self.bn(X)
+            print('batch_norm', torch.mean(X), torch.std(X))
+            X = self.relu(X)
+            print('relu', torch.mean(X), torch.std(X))
+        X = self.last_conv(X)
+        print('last_conv', torch.mean(X), torch.std(X))
+        out = self.sigmoid(X)
+        print('sigmoid', torch.mean(out), torch.std(out))
+
+        """
         # Run Deep Decoder Net
         out = self.model(X)
+        """
 
         return out
 
