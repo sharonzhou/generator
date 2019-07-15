@@ -27,12 +27,18 @@ class BaseArgParser(object):
         self.parser.add_argument('--ckpt_path', type=str, default='',
                                  help='Path to checkpoint to load. If empty, start from scratch.')
 
-        self.parser.add_argument('--image_name', type=str, default='lena_512.png',
+        self.parser.add_argument('--image_name', type=str, default='lena.png',
                                  help='Image name to train on (to compress).')
+
+        self.parser.add_argument('--mask_name', type=str, default=None,
+                                 help='Mask name to avoid backproping gradients through.')
         
         self.parser.add_argument('--data_dir', type=str, default='images',
                                  help='Path to image(s) to run through generator.')
 
+        self.parser.add_argument('--mask_dir', type=str, default='masks',
+                                 help='Path to mask(s) to run through generator.')
+        
         self.parser.add_argument('--gpu_ids', type=str, default='0,1,2,3',
                                  help='Comma-separated list of GPU IDs. Use -1 for CPU.')
 
@@ -44,11 +50,13 @@ class BaseArgParser(object):
         self.parser.add_argument('--save_dir', type=str, default='ckpts/',
                                  help='Directory in which to save model checkpoints.')
        
-        self.parser.add_argument('--toy', type=util.str_to_bool, default=False, help='Use small dataset or not.')
+        self.parser.add_argument('--toy', action='store_true', help='Use small dataset or not.')
 
         self.parser.add_argument('--num_visuals', type=int, default=4, help='Number of visuals to display per eval.')
 
-        self.parser.add_argument('--use_custom_input_noise', action='store_true', default=False, help='Use custom noise -- relevant only for Deep Decoder Net right now.')
+        # Custom parameters for model input and model architecture depending on input image
+        self.parser.add_argument('--use_custom_input_noise', action='store_true', help='Use custom noise -- relevant only for Deep Decoder Net right now.')
+        self.parser.add_argument('--disable_batch_norm', action='store_true', help='Disable batch norm if on (good for hexes to disable, but may be better to keep it for other images).')
     
     def parse_args(self):
         args = self.parser.parse_args()

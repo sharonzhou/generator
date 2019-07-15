@@ -1,0 +1,1 @@
+--name debug_<NAME> --gpu_ids 2,3 --use_custom_input_noise --image_name As.png --mask_name 512_square.png

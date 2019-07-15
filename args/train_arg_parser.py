@@ -20,11 +20,11 @@ class TrainArgParser(BaseArgParser):
                                  help='Number of epochs between saving a checkpoint to save_dir.')
         self.parser.add_argument('--max_ckpts', type=int, default=5,
                                  help='Number of recent ckpts to keep before overwriting old ones.')
-        self.parser.add_argument('--best_ckpt_metric', type=str, default='loss', choices=('loss'),
+        self.parser.add_argument('--best_ckpt_metric', type=str, default='masked_loss', choices=('masked_loss'),
                                  help='Metric used to determine which checkpoint is best.')
 
         # Learning rate args
-        self.parser.add_argument('--learning_rate', type=float, default=1e-3,
+        self.parser.add_argument('--learning_rate', type=float, default=3e-3,
                                  help='Initial learning rate.')
         self.parser.add_argument('--lr_scheduler', type=str, default='step', choices=('step', 'multi_step', 'plateau'),
                                  help='LR scheduler to use.')
@@ -46,7 +46,7 @@ class TrainArgParser(BaseArgParser):
         self.parser.add_argument('--weight_decay', type=float, default=0,
                                  help='Weight decay (i.e., L2 regularization factor).')
         self.parser.add_argument('--dropout_prob', type=float, default=0.0, help='Dropout probability.')
-        self.parser.add_argument('--num_epochs', type=int, default=5000,
+        self.parser.add_argument('--num_epochs', type=int, default=15000,
                                  help='Number of epochs to train. If 0, train forever.')
 
         # Loss args
@@ -54,5 +54,7 @@ class TrainArgParser(BaseArgParser):
                                  help='Loss function to use.')
         
         # Model args
-        self.parser.add_argument('--use_pretrained', action='store_true', default=False,
-                                 help='If True, load a pretrained model from ckpt_path.')
+        self.parser.add_argument('--use_pretrained', action='store_true', help='If True, load a pretrained model from ckpt_path.')
+
+        # Prediction args
+        self.parser.add_argument('--save_preds', action='store_true', help='Save prediction every visualize step.')

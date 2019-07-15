@@ -11,7 +11,7 @@ sys.path.append(str(Path(__file__).absolute().parent.parent))
 
 import torch.nn as nn
 from torchvision import models
-from models.deepdecodernet import DeepDecoderNet
+from models.deep_decoder_net import DeepDecoderNet
 
 # Make sure to add to this as you write models.
 model_dict = {'deepdecodernet': DeepDecoderNet}

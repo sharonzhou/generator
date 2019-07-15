@@ -18,6 +18,8 @@ class TrainLogger(BaseLogger):
         self.epochs_per_visual = args.epochs_per_visual
         self.experiment_name = args.name
         self.num_epochs = args.num_epochs
+        self.masked_loss_meter = util.AverageMeter()
+        self.obscured_loss_meter = util.AverageMeter()
         self.loss_meter = util.AverageMeter()
         self.pbar = tqdm(total=args.num_epochs)
         self.train_start_time = time()
@@ -32,10 +34,19 @@ class TrainLogger(BaseLogger):
 
         self._log_text(hparams)
 
-    def log_status(self, inputs, logits, targets, loss):
+    def log_status(self, inputs, masked_logits, obscured_logits, logits,
+                   targets, masked_loss, obscured_loss, loss, 
+                   save_preds=False, force_visualize=False):
         """Log results and status of training."""
+        
+        masked_loss = masked_loss.item()
+        obscured_loss = obscured_loss.item()
         loss = loss.item()
-        self.loss_meter.update(loss, inputs.size(0))
+        batch_size = inputs.size(0)
+
+        self.masked_loss_meter.update(masked_loss, batch_size)
+        self.obscured_loss_meter.update(obscured_loss, batch_size)
+        self.loss_meter.update(loss, batch_size)
 
         # Periodically write to the log and TensorBoard
         if self.epoch % self.epochs_per_print == 0:
@@ -44,34 +55,41 @@ class TrainLogger(BaseLogger):
             duration = time() - self.train_start_time
             hours, rem = divmod(duration, 3600)
             minutes, seconds = divmod(rem, 60)
-            message = f'[epoch: {self.epoch}, time: {int(hours):0>2}:{int(minutes):0>2}:{seconds:05.2f}, batch loss: {self.loss_meter.avg:.3g}]'
-
-            # Write all errors as scalars to the graph
-            self._log_scalars({'batch_loss': self.loss_meter.avg}, print_to_stdout=False)
-            self.loss_meter.reset()
-
+            
+            message = f'[epoch: {self.epoch}, time: {int(hours):0>2}:{int(minutes):0>2}:{seconds:05.2f}, masked loss: {self.masked_loss_meter.avg:.3g}, obscured_loss: {self.obscured_loss_meter.avg:.3g}, loss: {self.loss_meter.avg:.3g}]'
             self.pbar.set_description(message)
+            
+            # Write all errors as scalars to the graph
+            self._log_scalars({'loss_masked': self.masked_loss_meter.avg}, print_to_stdout=False)
+            self._log_scalars({'loss_obscured': self.obscured_loss_meter.avg}, print_to_stdout=False)
+            self._log_scalars({'loss_all': self.loss_meter.avg}, print_to_stdout=False)
 
         # Periodically visualize up to num_visuals training examples from the batch
-        if self.epoch % self.epochs_per_visual == 0:
+        if self.epoch % self.epochs_per_visual == 0 or force_visualize:
+            # Does not make sense to show masked or obscured logits... since not image size anymore
             self.visualize(inputs, logits, targets, phase='train', epoch=self.epoch)
+
+            if save_preds:
+                logits_image_name = f'prediction-{epoch}.png'
+                logits_image_path = os.path.join(self.log_dir, logits_image_name)
+                
+                logits = logits.detach().to('cpu')
+                logits = logits.numpy().copy()
+                logits_np = util.convert_image_from_tensor(logits)
+
+                logits_pil = Image.fromarray(logits_np)
+                logits_pil.save(logits_image_path)
 
     def start_epoch(self):
         """Log info for start of an epoch."""
         self.epoch_start_time = time()
 
-    def end_epoch(self, metrics):
+    def end_epoch(self):
         """Log info for end of an epoch.
         Args:
             metrics: Dictionary of metric values. Items have format '{phase}_{metric}': value.
             curves: Dictionary of curves. Items have format '{phase}_{curve}: value.
         """
-        self._log_scalars(metrics, print_to_stdout=False)
-
-        """
-        self._plot_curves(curves)
-        """
-
         self.epoch += 1
         self.pbar.update(1)
 

@@ -26,7 +26,7 @@ class BaseLogger(object):
         self.num_visuals = args.num_visuals
 
         # log dir, is the directory for tensorboard logs: <project_dir>/logs/
-        log_dir = os.path.join('logs', args.name + '_' + datetime.now().strftime('%b%d_%H%M'))
+        log_dir = os.path.join('logs', args.name + '_' + datetime.now().strftime('%b%d_%H%M%S%f'))
         self.log_dir = log_dir
 
         self.summary_writer = SummaryWriter(log_dir=log_dir)
@@ -35,17 +35,11 @@ class BaseLogger(object):
         self.log_path = os.path.join(self.save_dir, '{}.log'.format(args.name))
 
         self.epoch = args.start_epoch
-        # Current iteration in epoch (i.e., # examples seen in the current epoch)
-        self.iter = 0
-        # Current iteration overall (i.e., total # of examples seen)
-        self.global_step = round_down((self.epoch - 1), args.batch_size)
-        self.iter_start_time = None
-        self.epoch_start_time = None
 
 
     def _log_text(self, text_dict):
         for k, v in text_dict.items():
-            self.summary_writer.add_text(k, str(v), self.global_step)
+            self.summary_writer.add_text(k, str(v), self.epoch)
 
 
     def _log_scalars(self, scalar_dict, print_to_stdout=True):
@@ -54,7 +48,7 @@ class BaseLogger(object):
             if print_to_stdout:
                 self.write('[{}: {:.3g}]'.format(k, v))
             k = k.replace('_', '/')  # Group in TensorBoard by phase
-            self.summary_writer.add_scalar(k, v, self.global_step)
+            self.summary_writer.add_scalar(k, v, self.epoch)
 
     def _plot_curves(self, curves_dict):
         """Plot all curves in a dict as RGB images to TensorBoard."""
@@ -86,7 +80,36 @@ class BaseLogger(object):
 
             curve_img = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
             curve_img = curve_img.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-            self.summary_writer.add_image(name.replace('_', '/'), curve_img, global_step=self.global_step)
+            self.summary_writer.add_image(name.replace('_', '/'), curve_img, global_step=self.epoch)
+
+    def debug_visualize(self, tensors, unique_id=None):
+        """Visualize in TensorBoard.
+        Args:
+            tensors: Tensor or list of Tensors to be visualized.
+        """
+        # If only one tensor not in a list
+        if not isinstance(tensors, list):
+            tensors = [tensors]
+        
+        visuals = []
+        for tensor in tensors:
+            tensor = tensor.detach().to('cpu')
+            tensor = tensor.numpy().copy()
+            tensor_np = util.convert_image_from_tensor(tensor)
+            visuals.append(tensor_np)
+
+        if len(visuals) > 1:
+            visuals_np = util.concat_images(visuals)
+            visuals_pil = Image.fromarray(visuals_np)
+        else:
+            visuals_pil = Image.fromarray(visuals[0])
+
+        title = 'debug'
+        tag = f'{title}'
+        if unique_id is not None:
+            tag += '_{}'.format(unique_id)
+
+        self.summary_writer.add_image(tag, np.uint8(visuals_np), self.epoch)
 
     def visualize(self, inputs, logits, targets, phase, epoch, unique_id=None, make_separate_prediction_img=False):
         """Visualize predictions and targets in TensorBoard.
@@ -105,28 +128,17 @@ class BaseLogger(object):
         logits = logits.numpy().copy()
         logits_np = util.convert_image_from_tensor(logits)
 
-        if make_separate_prediction_img:
-            logits_image_name = f'prediction-{epoch}.png'
-            logits_image_path = os.path.join(self.log_dir, logits_image_name)
-           #  conformed_logits = np.squeeze(logits, 0)
-           #  conformed_logits = np.moveaxis(conformed_logits, 0, -1)
-           #  conformed_logits = util.normalize_to_image(conformed_logits)
-           #  logits_pil = Image.fromarray(conformed_logits.astype('uint8'))
-            logits_pil = Image.fromarray(logits_np)
-            logits_pil.save(logits_image_path)
-
         targets = targets.detach().to('cpu')
         targets = targets.numpy().copy()
         targets_np = util.convert_image_from_tensor(targets)
 
-        # input_np = inputs[i].detach().to('cpu').numpy()
-        # input_np = np.transpose(input_np, (1, 2, 0))
+        abs_diff = np.abs(targets_np - logits_np)
 
-        visuals = [logits_np, targets_np]
+        visuals = [logits_np, targets_np, abs_diff]
         visuals_np = util.concat_images(visuals)
         visuals_pil = Image.fromarray(visuals_np)
         
-        title = 'target_pred'
+        title = 'target_pred_diff'
         visuals_image_name = f'{title}-{epoch}.png'
         visuals_image_path = os.path.join(self.log_dir, visuals_image_name)
         
@@ -136,7 +148,7 @@ class BaseLogger(object):
         if unique_id is not None:
             tag += '_{}'.format(unique_id)
 
-        self.summary_writer.add_image(tag, np.uint8(visuals_np), self.global_step)
+        self.summary_writer.add_image(tag, np.uint8(visuals_np), self.epoch)
 
     def write(self, message, print_to_stdout=True):
         """Write a message to the log. If print_to_stdout is True, also print to stdout."""

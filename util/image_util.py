@@ -10,11 +10,12 @@ from PIL import Image
 import torchvision.transforms as transforms
 from torch.autograd import Variable
 
-def get_target_image(args):
+
+def get_image(img_dir, img_name):
     # Load data and image
-    data_dir = Path(args.data_dir)
-    img_path = data_dir / f'{args.image_name}'
-    img = Image.open(img_path)
+    img_dir = Path(img_dir)
+    img_path = img_dir / img_name
+    img = Image.open(img_path).convert('RGB')
 
     # Transform image
     transforms_list = []
@@ -22,9 +23,28 @@ def get_target_image(args):
     transform = transforms.Compose([t for t in transforms_list if t])
     img = transform(img)
     img = torch.unsqueeze(img, 0)
+   
+    if torch.cuda.is_available():
+        img = img.cuda()
 
     return img
    
+def get_target_image(args):
+    return get_image(args.data_dir, args.image_name)
+
+def get_mask(args):
+    if not args.mask_dir or not args.mask_name:
+        mask = torch.ones(args.target_image_shape)
+    else:
+        # Load mask
+        mask = get_image(args.mask_dir, args.mask_name)
+        mask = mask.float()
+    
+    if torch.cuda.is_available():
+        mask = mask.cuda()
+  
+    return mask
+
 def get_input_noise(args, dist='gaussian', latent_dim=100):
     # Sample a fixed noise vector z \in R^latent_dim
     noise_tensor = Variable(torch.FloatTensor(latent_dim))
@@ -34,14 +54,14 @@ def get_input_noise(args, dist='gaussian', latent_dim=100):
         noise_tensor.data.uniform_(-1, 1)
     else:
         # Sample with spherical gaussian z \in R^latent_dim ~ N(0, I)
-        noise_tensor.data.normal_(mean=0, std=1) 
+        noise_tensor.data.normal_() 
 
     if torch.cuda.is_available():
         noise_tensor = noise_tensor.cuda()
 
     return noise_tensor
 
-def get_deep_decoder_input_noise(image_shape, num_channels=128, num_up=5):
+def get_deep_decoder_input_noise(image_shape, dist='gaussian', num_channels=128, num_up=5):
     # Create custom fixed noise input (stays same across epochs) for deep decoder net
     total_upsample = 2 ** num_up
 
@@ -51,8 +71,11 @@ def get_deep_decoder_input_noise(image_shape, num_channels=128, num_up=5):
     noise_shape = [1, num_channels, height, width]
     noise_tensor = Variable(torch.zeros(noise_shape))
 
-    noise_tensor.data.uniform_() 
-    noise_tensor /= 10.
+    if dist == 'uniform':
+        noise_tensor.data.uniform_() 
+        noise_tensor /= 10.
+    else:
+        noise_tensor.data.normal_() 
 
     if torch.cuda.is_available():
         noise_tensor = noise_tensor.cuda()
@@ -69,7 +92,7 @@ def _make_rgb(image):
 
 def normalize_to_image(img):
     """Normalizes img to be in the range 0-255."""
-    img *= 255
+    img *= 255.
     return img
 
 def convert_image_from_tensor(image):
@@ -82,8 +105,8 @@ def convert_image_from_tensor(image):
     # Normalize
     image = normalize_to_image(image)
 
-    # Convert to ints
-    image = image.astype('uint8')
+    # Convert to floats
+    image = image.astype(float)
 
     return image
 

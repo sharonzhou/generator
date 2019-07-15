@@ -19,13 +19,17 @@ from saver import ModelSaver
 def train(args):
     
     # Instantiate input and target: Input is noise tensor, target is image
-    target_image = util.get_target_image(args)
+    target_image = util.get_target_image(args).float()
     input_noise = util.get_input_noise(args)
+    input_noise.requires_grad = True
 
+    # Instantiate mask
+    setattr(args, 'target_image_shape', target_image.shape)
+    mask = util.get_mask(args)
+    setattr(args, 'mask', mask)
+    
     # For deep decoder net input, reshape input noise and do not parallelize
     if args.model == 'DeepDecoderNet':
-        setattr(args, 'target_image_shape', target_image.shape)
-       
         if args.use_custom_input_noise:
             input_noise = util.get_deep_decoder_input_noise(target_image.shape)
         else:
@@ -36,6 +40,8 @@ def train(args):
 
     print(f'Input: {input_noise.shape}')
     print(f'Target: {target_image.shape}')
+    if mask is not None:
+        print(f'Mask: {mask.shape}')
 
     # Load model
     model_fn = models.__dict__[args.model]
@@ -43,6 +49,12 @@ def train(args):
     model = nn.DataParallel(model, args.gpu_ids)
     model = model.to(args.device)
     model.train()
+  
+    # Print model parameters
+    print(model.parameters())
+    print('Model parameters: name, size, mean, std')
+    for name, param in model.named_parameters():
+        print(name, param.size(), torch.mean(param), torch.std(param))
 
     # Get optimizer and loss
     parameters = model.parameters()
@@ -62,23 +74,64 @@ def train(args):
         logger.start_epoch()
 
         # Input is noise tensor, target is image
+        input_noise.detach().to('cpu').float()
         with torch.set_grad_enabled(True):
-            input_noise.to(args.device)
-            logits = model.forward(input_noise)
+            logits = model.forward(input_noise).float()
 
-            # Initialize loss to 0
-            loss = torch.zeros(1, requires_grad=True).to(args.device)
-            loss = loss_fn(logits, target_image.to(args.device))
+            masked_logits = logits[mask.byte()]
+            masked_target_image = target_image.cuda()[mask.byte()]
+                
+            # Debug logits and diffs
+            #logger.debug_visualize([logits, logits * mask, logits * (1-mask)])
 
-            logger.log_status(input_noise, logits, target_image, loss)
-            
-            optimizer.zero_grad()
-            loss.backward()
+            # With backprop, calculate (1) masked loss - loss when mask is applied
+            masked_loss = torch.zeros(1, requires_grad=True).to(args.device)
+            masked_loss = loss_fn(logits * mask, target_image).mean()
+
+            masked_loss.backward()
             optimizer.step()
-
-        metrics = {'loss': loss.item()}
+            optimizer.zero_grad()
+            
+        # Without backprop, calculate (2) obscured loss - region obscured by mask
+        # and (3) loss - loss on the entire image
+        with torch.no_grad():
+            obscured_logits = logits * (1.0 - mask) 
+            obscured_target_image = target_image * (1.0 - mask)
+            
+            full_loss = torch.zeros(1)
+            obscured_loss = torch.zeros(1)
+            
+            obscured_loss = loss_fn(obscured_logits, obscured_target_image).mean()
+            full_loss = loss_fn(logits, target_image).mean()
+        
+        logger.log_status(inputs=input_noise,
+                          masked_logits=masked_logits,
+                          obscured_logits=obscured_logits,
+                          logits=logits,
+                          targets=target_image,
+                          masked_loss=masked_loss,
+                          obscured_loss=obscured_loss,
+                          loss=full_loss,
+                          save_preds=args.save_preds,
+                          )
+        
+        # TODO: Make a function for metrics - or at least make sure dict includes all possible best ckpt metrics
+        metrics = {'masked_loss': masked_loss.item()}
         saver.save(logger.epoch, model, optimizer, args.device, metric_val=metrics.get(args.best_ckpt_metric, None))
-        logger.end_epoch(metrics)
+        logger.end_epoch()
+        
+    # Last log after everything completes
+    logger.log_status(inputs=input_noise,
+                      masked_logits=masked_logits,
+                      obscured_logits=obscured_logits,
+                      logits=logits,
+                      targets=target_image,
+                      masked_loss=masked_loss,
+                      obscured_loss=obscured_loss,
+                      loss=full_loss,
+                      save_preds=args.save_preds,
+                      force_visualize=True,
+                      )
 
 if __name__ == "__main__":
     parser = TrainArgParser()
