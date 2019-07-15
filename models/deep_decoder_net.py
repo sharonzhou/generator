@@ -30,6 +30,7 @@ class DeepDecoderNet(BaseNet):
                  num_up=5,
                  default_noise_size=100,
                  use_custom_input_noise=False,
+                 disable_batch_norm=False,
                  **kwargs):
         super(DeepDecoderNet, self).__init__()
 
@@ -61,16 +62,23 @@ class DeepDecoderNet(BaseNet):
         self.last_conv = nn.Conv2d(self.num_channels, self.num_output_channels, 1)
         self.sigmoid = nn.Sigmoid()
 
+        nn.init.kaiming_normal(self.conv.weight.data, nonlinearity='relu')
+        nn.init.kaiming_normal(self.last_conv.weight.data, nonlinearity='relu')
+
         layers = []
         for i in range(self.num_up):
             layers.append(self.up)
             layers.append(self.conv)
-            layers.append(self.bn)
+            
+            if not disable_batch_norm:
+                layers.append(self.bn)
+
             layers.append(self.relu)
         layers.append(self.last_conv)
         layers.append(self.sigmoid)
         
         self.model = nn.Sequential(*layers)
+        
 
     def forward(self, X):
         """
@@ -83,7 +91,8 @@ class DeepDecoderNet(BaseNet):
         if not self.use_custom_input_noise:
             X = self.fc(X)
             X = X.view(1, self.num_channels, self.input_height, self.input_width)
-
+        
+        """
         for i in range(self.num_up):
             X = self.up(X)
             print('up_sample', torch.mean(X), torch.std(X))
@@ -97,11 +106,10 @@ class DeepDecoderNet(BaseNet):
         print('last_conv', torch.mean(X), torch.std(X))
         out = self.sigmoid(X)
         print('sigmoid', torch.mean(out), torch.std(out))
-
         """
+
         # Run Deep Decoder Net
         out = self.model(X)
-        """
 
         return out
 

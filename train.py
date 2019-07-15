@@ -49,7 +49,7 @@ def train(args):
     model = nn.DataParallel(model, args.gpu_ids)
     model = model.to(args.device)
     model.train()
-
+  
     # Print model parameters
     print(model.parameters())
     print('Model parameters: name, size, mean, std')
@@ -81,28 +81,14 @@ def train(args):
             masked_logits = logits[mask.byte()]
             masked_target_image = target_image.cuda()[mask.byte()]
                 
-            #print('logits maxmin', logits.max(), logits.min())
-            #print('masked logits maxmin', masked_logits.max(), masked_logits.min(), masked_logits.shape)
-            logger.debug_visualize([logits, logits * mask, logits * (1-mask)])
+            # Debug logits and diffs
+            #logger.debug_visualize([logits, logits * mask, logits * (1-mask)])
 
             # With backprop, calculate (1) masked loss - loss when mask is applied
             masked_loss = torch.zeros(1, requires_grad=True).to(args.device)
-          
-            masked_loss = loss_fn(logits, target_image)
-            masked_loss = masked_loss[mask.byte()]
-            masked_loss = masked_loss.mean()
+            masked_loss = loss_fn(logits * mask, target_image).mean()
 
-            masked_loss2 = loss_fn(masked_logits, masked_target_image).mean()
-          
-            masked_loss3 = logits - target_image
-            masked_loss3 = masked_loss3[mask.byte()]
-            masked_loss3 = masked_loss3.pow(2).mean()
-            
-            masked_loss4 = loss_fn(logits * mask, target_image * mask).mean()
-            
-            masked_loss5 = loss_fn(logits * mask, target_image).mean()
-
-            masked_loss5.backward()
+            masked_loss.backward()
             optimizer.step()
             optimizer.zero_grad()
             
@@ -111,7 +97,6 @@ def train(args):
         with torch.no_grad():
             obscured_logits = logits * (1.0 - mask) 
             obscured_target_image = target_image * (1.0 - mask)
-            #print('obscured logits maxmin', obscured_logits.max(), obscured_logits.min(), obscured_logits.shape)
             
             full_loss = torch.zeros(1)
             obscured_loss = torch.zeros(1)
