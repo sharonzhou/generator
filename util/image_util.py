@@ -96,9 +96,11 @@ def normalize_to_image(img):
     return img
 
 def convert_image_from_tensor(image):
+    image = np.array(image)
+
     # Remove batchsize
     image = np.squeeze(image, 0)
-
+    
     # Move channel to last in shape
     image = np.moveaxis(image, 0, -1)
 

@@ -34,7 +34,7 @@ class TrainLogger(BaseLogger):
 
         self._log_text(hparams)
 
-    def log_status(self, inputs, masked_logits, obscured_logits, logits,
+    def log_status(self, inputs, masked_probs, obscured_probs, probs,
                    targets, masked_loss, obscured_loss, loss, 
                    save_preds=False, force_visualize=False):
         """Log results and status of training."""
@@ -66,19 +66,19 @@ class TrainLogger(BaseLogger):
 
         # Periodically visualize up to num_visuals training examples from the batch
         if self.epoch % self.epochs_per_visual == 0 or force_visualize:
-            # Does not make sense to show masked or obscured logits... since not image size anymore
-            self.visualize(inputs, logits, targets, phase='train', epoch=self.epoch)
+            # Does not make sense to show masked or obscured probs... since not image size anymore
+            self.visualize(probs, targets, obscured_probs, phase='train', epoch=self.epoch)
 
             if save_preds:
-                logits_image_name = f'prediction-{epoch}.png'
-                logits_image_path = os.path.join(self.log_dir, logits_image_name)
+                probs_image_name = f'prediction-{epoch}.png'
+                probs_image_path = os.path.join(self.log_dir, probs_image_name)
                 
-                logits = logits.detach().to('cpu')
-                logits = logits.numpy().copy()
-                logits_np = util.convert_image_from_tensor(logits)
+                probs = probs.detach().to('cpu')
+                probs = probs.numpy().copy()
+                probs_np = util.convert_image_from_tensor(probs)
 
-                logits_pil = Image.fromarray(logits_np)
-                logits_pil.save(logits_image_path)
+                probs_pil = Image.fromarray(probs_np)
+                probs_pil.save(probs_image_path)
 
     def start_epoch(self):
         """Log info for start of an epoch."""

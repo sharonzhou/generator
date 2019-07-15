@@ -9,6 +9,7 @@ import torch
 import torchvision
 import torch.nn as nn
 import torch.optim as optim
+import torch.nn.functional as F
 
 import util
 import models
@@ -75,38 +76,42 @@ def train(args):
         # Input is noise tensor, target is image
         input_noise.detach().to('cpu').float()
         with torch.set_grad_enabled(True):
-            logits = model.forward(input_noise).float()
+            if args.use_intermediate_logits:
+                logits = model.forward(input_noise).float()
+                probs = F.sigmoid(logits) 
 
-            masked_logits = logits[mask.byte()]
-            masked_target_image = target_image.cuda()[mask.byte()]
-                
-            # Debug logits and diffs
-            #logger.debug_visualize([logits, logits * mask, logits * (1-mask)])
+                # Debug logits and diffs
+                logger.debug_visualize([logits, logits * mask, logits * (1-mask)])
+            else:
+                probs = model.forward(input_noise).float()
 
-            # With backprop, calculate (1) masked loss - loss when mask is applied
+            # With backprop, calculate (1) masked loss, loss when mask is applied.
+            # Loss is done elementwise without reduction, so must take mean after.
+            # Easier for debugging.
+            masked_probs = probs * mask
+            masked_target_image = target_image * mask
             masked_loss = torch.zeros(1, requires_grad=True).to(args.device)
-            masked_loss = loss_fn(logits * mask, target_image).mean()
+            masked_loss = loss_fn(masked_probs, masked_target_image).mean()
 
             masked_loss.backward()
             optimizer.step()
             optimizer.zero_grad()
             
-        # Without backprop, calculate (2) obscured loss - region obscured by mask
-        # and (3) loss - loss on the entire image
+        # Without backprop, calculate (2) full loss on the entire image,
+        # And (3) the obscured loss, region obscured by mask.
         with torch.no_grad():
-            obscured_logits = logits * (1.0 - mask) 
-            obscured_target_image = target_image * (1.0 - mask)
-            
             full_loss = torch.zeros(1)
-            obscured_loss = torch.zeros(1)
+            full_loss = loss_fn(probs, target_image).mean()
             
-            obscured_loss = loss_fn(obscured_logits, obscured_target_image).mean()
-            full_loss = loss_fn(logits, target_image).mean()
+            obscured_probs = probs * (1.0 - mask) 
+            obscured_target_image = target_image * (1.0 - mask)
+            obscured_loss = torch.zeros(1)
+            obscured_loss = loss_fn(obscured_probs, obscured_target_image).mean()
         
         logger.log_status(inputs=input_noise,
-                          masked_logits=masked_logits,
-                          obscured_logits=obscured_logits,
-                          logits=logits,
+                          masked_probs=masked_probs,
+                          obscured_probs=obscured_probs,
+                          probs=probs,
                           targets=target_image,
                           masked_loss=masked_loss,
                           obscured_loss=obscured_loss,
@@ -121,9 +126,9 @@ def train(args):
         
     # Last log after everything completes
     logger.log_status(inputs=input_noise,
-                      masked_logits=masked_logits,
-                      obscured_logits=obscured_logits,
-                      logits=logits,
+                      masked_probs=masked_probs,
+                      obscured_probs=obscured_probs,
+                      probs=probs,
                       targets=target_image,
                       masked_loss=masked_loss,
                       obscured_loss=obscured_loss,

@@ -82,7 +82,7 @@ class BaseLogger(object):
             curve_img = curve_img.reshape(fig.canvas.get_width_height()[::-1] + (3,))
             self.summary_writer.add_image(name.replace('_', '/'), curve_img, global_step=self.epoch)
 
-    def debug_visualize(self, tensors, unique_id=None):
+    def debug_visualize(self, tensors, unique_suffix=None):
         """Visualize in TensorBoard.
         Args:
             tensors: Tensor or list of Tensors to be visualized.
@@ -106,35 +106,35 @@ class BaseLogger(object):
 
         title = 'debug'
         tag = f'{title}'
-        if unique_id is not None:
-            tag += '_{}'.format(unique_id)
+        if unique_suffix is not None:
+            tag += '_{}'.format(unique_suffix)
 
         self.summary_writer.add_image(tag, np.uint8(visuals_np), self.epoch)
 
-    def visualize(self, inputs, logits, targets, phase, epoch, unique_id=None, make_separate_prediction_img=False):
+    def visualize(self, probs, targets, obscured_probs, phase, epoch, unique_suffix=None, make_separate_prediction_img=False):
         """Visualize predictions and targets in TensorBoard.
         Args:
-            inputs: Inputs to the model.
-            logits: Logits predicted by the model.
+            probs: Probabilities outputted by the model.
             targets: Target labels for the inputs.
             phase: One of 'train', 'val', or 'test'.
-            unique_id: A unique ID to append to every image title. Allows
+            unique_suffix: A unique suffix to append to every image title. Allows
               for displaying all visualizations separately on TensorBoard.
         Returns:
             Number of examples visualized to TensorBoard.
         """
 
-        logits = logits.detach().to('cpu')
-        logits = logits.numpy().copy()
-        logits_np = util.convert_image_from_tensor(logits)
+        probs = probs.detach().to('cpu')
+        probs = probs.numpy().copy()
+        probs_np = util.convert_image_from_tensor(probs)
 
         targets = targets.detach().to('cpu')
         targets = targets.numpy().copy()
         targets_np = util.convert_image_from_tensor(targets)
 
-        abs_diff = np.abs(targets_np - logits_np)
+        abs_diff = np.abs(targets_np - probs_np)
+        obscured_probs_np = util.convert_image_from_tensor(obscured_probs)
 
-        visuals = [logits_np, targets_np, abs_diff]
+        visuals = [probs_np, targets_np, abs_diff, obscured_probs_np]
         visuals_np = util.concat_images(visuals)
         visuals_pil = Image.fromarray(visuals_np)
         
@@ -145,8 +145,8 @@ class BaseLogger(object):
         visuals_pil.save(visuals_image_path)
 
         tag = f'{phase}/{title}'
-        if unique_id is not None:
-            tag += '_{}'.format(unique_id)
+        if unique_suffix is not None:
+            tag += '_{}'.format(unique_suffix)
 
         self.summary_writer.add_image(tag, np.uint8(visuals_np), self.epoch)
 

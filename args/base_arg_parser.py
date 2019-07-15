@@ -57,6 +57,7 @@ class BaseArgParser(object):
         # Custom parameters for model input and model architecture depending on input image
         self.parser.add_argument('--use_custom_input_noise', action='store_true', help='Use custom noise -- relevant only for Deep Decoder Net right now.')
         self.parser.add_argument('--disable_batch_norm', action='store_true', help='Disable batch norm if on (good for hexes to disable, but may be better to keep it for other images).')
+        self.parser.add_argument('--use_intermediate_logits', action='store_true', help='Output intermediate logits before sigmoid, for visualization or debugging values.')
     
     def parse_args(self):
         args = self.parser.parse_args()

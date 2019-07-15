@@ -31,6 +31,7 @@ class DeepDecoderNet(BaseNet):
                  default_noise_size=100,
                  use_custom_input_noise=False,
                  disable_batch_norm=False,
+                 use_intermediate_logits=False,
                  **kwargs):
         super(DeepDecoderNet, self).__init__()
 
@@ -75,7 +76,9 @@ class DeepDecoderNet(BaseNet):
 
             layers.append(self.relu)
         layers.append(self.last_conv)
-        layers.append(self.sigmoid)
+        
+        if not use_intermediate_logits:
+            layers.append(self.sigmoid)
         
         self.model = nn.Sequential(*layers)
         
