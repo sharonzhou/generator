@@ -51,7 +51,6 @@ def train(args):
     model.train()
   
     # Print model parameters
-    print(model.parameters())
     print('Model parameters: name, size, mean, std')
     for name, param in model.named_parameters():
         print(name, param.size(), torch.mean(param), torch.std(param))
