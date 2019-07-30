@@ -19,8 +19,9 @@ class TrainLogger(BaseLogger):
         self.experiment_name = args.name
         self.num_epochs = args.num_epochs
         self.masked_loss_meter = util.AverageMeter()
-        self.obscured_loss_meter = util.AverageMeter()
-        self.loss_meter = util.AverageMeter()
+        self.masked_loss_eval_meter = util.AverageMeter()
+        self.obscured_loss_eval_meter = util.AverageMeter()
+        self.full_loss_eval_meter = util.AverageMeter()
         self.pbar = tqdm(total=args.num_epochs)
         self.train_start_time = time()
 
@@ -34,19 +35,23 @@ class TrainLogger(BaseLogger):
 
         self._log_text(hparams)
 
-    def log_status(self, inputs, masked_probs, obscured_probs, probs,
-                   targets, masked_loss, obscured_loss, loss, 
+    def log_status(self, inputs, targets, probs, masked_probs, masked_loss,
+                   probs_eval, masked_probs_eval, obscured_probs_eval,
+                   masked_loss_eval, obscured_loss_eval, full_loss_eval, 
                    save_preds=False, force_visualize=False):
         """Log results and status of training."""
         
-        masked_loss = masked_loss.item()
-        obscured_loss = obscured_loss.item()
-        loss = loss.item()
         batch_size = inputs.size(0)
+        
+        masked_loss = masked_loss.item()
+        masked_loss_eval = masked_loss_eval.item()
+        obscured_loss_eval = obscured_loss_eval.item()
+        full_loss_eval = full_loss_eval.item()
 
         self.masked_loss_meter.update(masked_loss, batch_size)
-        self.obscured_loss_meter.update(obscured_loss, batch_size)
-        self.loss_meter.update(loss, batch_size)
+        self.masked_loss_eval_meter.update(masked_loss_eval, batch_size)
+        self.obscured_loss_eval_meter.update(obscured_loss_eval, batch_size)
+        self.full_loss_eval_meter.update(full_loss_eval, batch_size)
 
         # Periodically write to the log and TensorBoard
         if self.epoch % self.epochs_per_print == 0:
@@ -56,18 +61,20 @@ class TrainLogger(BaseLogger):
             hours, rem = divmod(duration, 3600)
             minutes, seconds = divmod(rem, 60)
             
-            message = f'[epoch: {self.epoch}, time: {int(hours):0>2}:{int(minutes):0>2}:{seconds:05.2f}, masked loss: {self.masked_loss_meter.avg:.3g}, obscured_loss: {self.obscured_loss_meter.avg:.3g}, loss: {self.loss_meter.avg:.3g}]'
+            message = f'[epoch: {self.epoch}, time: {int(hours):0>2}:{int(minutes):0>2}:{seconds:05.2f}, masked loss (train): {self.masked_loss_meter.avg:.3g}, masked loss (eval): {self.masked_loss_eval_meter.avg:.3g}, obscured_loss: {self.obscured_loss_eval_meter.avg:.3g}, loss: {self.full_loss_eval_meter.avg:.3g}]'
             self.pbar.set_description(message)
             
             # Write all errors as scalars to the graph
             self._log_scalars({'loss_masked': self.masked_loss_meter.avg}, print_to_stdout=False)
-            self._log_scalars({'loss_obscured': self.obscured_loss_meter.avg}, print_to_stdout=False)
-            self._log_scalars({'loss_all': self.loss_meter.avg}, print_to_stdout=False)
+            self._log_scalars({'loss_masked-eval': self.masked_loss_eval_meter.avg}, print_to_stdout=False)
+            self._log_scalars({'loss_obscured': self.obscured_loss_eval_meter.avg}, print_to_stdout=False)
+            self._log_scalars({'loss_all': self.full_loss_eval_meter.avg}, print_to_stdout=False)
 
         # Periodically visualize up to num_visuals training examples from the batch
         if self.epoch % self.epochs_per_visual == 0 or force_visualize:
             # Does not make sense to show masked or obscured probs... since not image size anymore
-            self.visualize(probs, targets, obscured_probs, phase='train', epoch=self.epoch)
+            self.visualize(probs, targets, obscured_probs_eval, phase='train', epoch=self.epoch)
+            self.visualize(probs_eval, targets, obscured_probs_eval, phase='eval', epoch=self.epoch)
 
             if save_preds:
                 probs_image_name = f'prediction-{epoch}.png'
