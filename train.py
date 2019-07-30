@@ -148,16 +148,20 @@ def train(args):
         
     # Last log after everything completes
     logger.log_status(inputs=input_noise,
-                      masked_probs=masked_probs,
-                      obscured_probs=obscured_probs,
-                      probs=probs,
                       targets=target_image,
+                      probs=probs,
+                      masked_probs=masked_probs,
                       masked_loss=masked_loss,
-                      obscured_loss=obscured_loss,
-                      loss=full_loss,
+                      probs_eval=probs_eval,
+                      masked_probs_eval=masked_probs_eval,
+                      obscured_probs_eval=obscured_probs_eval,
+                      masked_loss_eval=masked_loss_eval,
+                      obscured_loss_eval=obscured_loss_eval,
+                      full_loss_eval=full_loss_eval,
                       save_preds=args.save_preds,
                       force_visualize=True,
                       )
+
 
 if __name__ == "__main__":
     parser = TrainArgParser()
