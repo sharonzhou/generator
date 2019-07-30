@@ -54,31 +54,29 @@ class DeepDecoderNet(BaseNet):
             self.input_width = self.input_height
             self.fc = nn.Linear(self.default_noise_size, 
                                 self.num_channels * self.input_height * self.input_width)
-       
+      
         # Layers in Deep Decoder Net
-        self.conv = nn.Conv2d(self.num_channels, self.num_channels, 1)
-        self.relu = nn.ReLU(inplace=True)
-        self.up = Upsample(scale_factor=2, mode='bilinear')
-        self.bn = nn.BatchNorm2d(self.num_channels)
-        self.last_conv = nn.Conv2d(self.num_channels, self.num_output_channels, 1)
-        self.sigmoid = nn.Sigmoid()
-
-        nn.init.kaiming_normal(self.conv.weight.data, nonlinearity='relu')
-        nn.init.kaiming_normal(self.last_conv.weight.data, nonlinearity='relu')
-
+        # Initialize weights of conv layers to Kaiming normal
         layers = []
         for i in range(self.num_up):
-            layers.append(self.up)
-            layers.append(self.conv)
+            layers.append(Upsample(scale_factor=2, mode='bilinear'))
+
+            conv = nn.Conv2d(self.num_channels, self.num_channels, 1)
+            nn.init.kaiming_normal(conv.weight.data, nonlinearity='relu')
+            layers.append(conv)      
             
             if not disable_batch_norm:
-                layers.append(self.bn)
+                layers.append(nn.BatchNorm2d(self.num_channels))
 
-            layers.append(self.relu)
-        layers.append(self.last_conv)
+            layers.append(nn.ReLU(inplace=True))
+        
+        last_conv = nn.Conv2d(self.num_channels, self.num_output_channels, 1)
+        nn.init.kaiming_normal(last_conv.weight.data, nonlinearity='relu')
+        layers.append(last_conv)
         
         if not use_intermediate_logits:
-            layers.append(self.sigmoid)
+            # Output probabilities directly
+            layers.append(nn.Sigmoid())
         
         self.model = nn.Sequential(*layers)
         
@@ -95,22 +93,6 @@ class DeepDecoderNet(BaseNet):
             X = self.fc(X)
             X = X.view(1, self.num_channels, self.input_height, self.input_width)
         
-        """
-        for i in range(self.num_up):
-            X = self.up(X)
-            print('up_sample', torch.mean(X), torch.std(X))
-            X = self.conv(X)
-            print('conv', torch.mean(X), torch.std(X))
-            X = self.bn(X)
-            print('batch_norm', torch.mean(X), torch.std(X))
-            X = self.relu(X)
-            print('relu', torch.mean(X), torch.std(X))
-        X = self.last_conv(X)
-        print('last_conv', torch.mean(X), torch.std(X))
-        out = self.sigmoid(X)
-        print('sigmoid', torch.mean(out), torch.std(out))
-        """
-
         # Run Deep Decoder Net
         out = self.model(X)
 
