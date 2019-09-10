@@ -45,7 +45,7 @@ def get_mask(args):
   
     return mask
 
-def get_input_noise(args, dist='gaussian', latent_dim=100):
+def get_input_noise(dist='gaussian', latent_dim=100):
     # Sample a fixed noise vector z \in R^latent_dim
     noise_tensor = Variable(torch.FloatTensor(latent_dim))
 
@@ -55,9 +55,7 @@ def get_input_noise(args, dist='gaussian', latent_dim=100):
     else:
         # Sample with spherical gaussian z \in R^latent_dim ~ N(0, I)
         noise_tensor.data.normal_() 
-
-    if torch.cuda.is_available():
-        noise_tensor = noise_tensor.cuda()
+    noise_tensor.detach().to('cpu').float()
 
     return noise_tensor
 
@@ -76,9 +74,7 @@ def get_deep_decoder_input_noise(image_shape, dist='gaussian', num_channels=128,
         noise_tensor /= 10.
     else:
         noise_tensor.data.normal_() 
-
-    if torch.cuda.is_available():
-        noise_tensor = noise_tensor.cuda()
+    noise_tensor.detach().to('cpu').float()
 
     return noise_tensor
 

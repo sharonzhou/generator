@@ -131,19 +131,29 @@ class BaseLogger(object):
         targets = targets.numpy().copy()
         targets_np = util.convert_image_from_tensor(targets)
 
-        abs_diff = np.abs(targets_np - probs_np)
-        obscured_probs_np = util.convert_image_from_tensor(obscured_probs)
+        if phase == "z_test":
+            visuals = [probs_np, targets_np]
+            
+            title = 'target_pred'
+            visuals_image_name = f'{title}-{epoch}.png'
+            log_dir_z_test = os.path.join(self.log_dir, 'z_test')
+            os.makedirs(log_dir_z_test, exist_ok=True)
+            visuals_image_path = os.path.join(log_dir_z_test, visuals_image_name)
+        else:
+            abs_diff = np.abs(targets_np - probs_np)
+            obscured_probs_np = util.convert_image_from_tensor(obscured_probs)
 
-        visuals = [probs_np, targets_np, abs_diff, obscured_probs_np]
+            visuals = [probs_np, targets_np, abs_diff, obscured_probs_np]
+        
+            title = 'pred_target_diff_obscured'
+            visuals_image_name = f'{title}-{epoch}.png'
+            visuals_image_path = os.path.join(self.log_dir, visuals_image_name)
+            
         visuals_np = util.concat_images(visuals)
         visuals_pil = Image.fromarray(visuals_np)
         
-        title = 'target_pred_diff'
-        visuals_image_name = f'{title}-{epoch}.png'
-        visuals_image_path = os.path.join(self.log_dir, visuals_image_name)
-        
         visuals_pil.save(visuals_image_path)
-
+        
         tag = f'{phase}/{title}'
         if unique_suffix is not None:
             tag += '_{}'.format(unique_suffix)

@@ -7,7 +7,7 @@ import torch.nn as nn
 
 class ModelSaver(object):
     """Class to save and load model ckpts."""
-    def __init__(self, save_dir, epochs_per_save, max_ckpts, metric_name='loss', maximize_metric=False):
+    def __init__(self, args, maximize_metric=False):
         """
         Args:
             save_dir: Directory to save checkpoints.
@@ -18,10 +18,10 @@ class ModelSaver(object):
             """
         super(ModelSaver, self).__init__()
 
-        self.save_dir = save_dir
-        self.epochs_per_save = epochs_per_save
-        self.max_ckpts = max_ckpts
-        self.metric_name = metric_name
+        self.save_dir = args.save_dir
+        self.epochs_per_save = args.epochs_per_save
+        self.max_ckpts = args.max_ckpts
+        self.metric_name = args.best_ckpt_metric
         self.maximize_metric = maximize_metric
 
         self.best_metric_val = None

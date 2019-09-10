@@ -16,13 +16,13 @@ import models
 from args import TrainArgParser
 from logger import TrainLogger
 from saver import ModelSaver
+from evaluator import Evaluator
 
 def train(args):
     
     # Instantiate input and target: Input is noise tensor, target is image
     target_image = util.get_target_image(args).float()
-    input_noise = util.get_input_noise(args)
-    input_noise.requires_grad = True
+    input_noise = util.get_input_noise() 
 
     # Instantiate mask
     setattr(args, 'target_image_shape', target_image.shape)
@@ -63,9 +63,17 @@ def train(args):
     optimizer = util.get_optimizer(parameters, args)
     loss_fn = util.get_loss_fn(args.loss_fn, args)
 
-    # Get logger and saver
+    # Get logger, saver, evaluator
     logger = TrainLogger(args)
-    saver = ModelSaver(args.save_dir, args.epochs_per_save, args.max_ckpts, args.best_ckpt_metric)
+    saver = ModelSaver(args)
+    evaluator = Evaluator(args=args,
+                          input_noise=input_noise,
+                          target_image=target_image,
+                          mask=mask,
+                          optimizer=optimizer,
+                          loss_fn=loss_fn,
+                          logger=logger
+                          )
     
     print(f'Logs: {logger.log_dir}')
     print(f'Ckpts: {args.save_dir}')
@@ -76,7 +84,6 @@ def train(args):
         logger.start_epoch()
 
         # Input is noise tensor, target is image
-        input_noise.detach().to('cpu').float()
         with torch.set_grad_enabled(True):
             if args.use_intermediate_logits:
                 logits = model.forward(input_noise).float()
@@ -101,10 +108,14 @@ def train(args):
         
         # TODO: Make a function for metrics - or at least make sure dict includes all possible best ckpt metrics
         metrics = {'masked_loss': masked_loss.item()}
-        saver.save(logger.epoch, model, optimizer, args.device, metric_val=metrics.get(args.best_ckpt_metric, None))         
+        saver.save(logger.epoch, model, optimizer, args.device, metric_val=metrics.get(args.best_ckpt_metric, None))        
         
         # Without backprop, calculate (2) full loss on the entire image,
         # And (3) the obscured loss, region obscured by mask.
+        
+        # TODO: Make this evaluation modular and in Evaluator
+        # evaluator.evaluate_mask(model, probs)
+        
         model.eval()
         with torch.no_grad():
             if args.use_intermediate_logits:
@@ -145,7 +156,16 @@ def train(args):
                           )
 
         logger.end_epoch()
-        
+
+        # Run z-test
+        z_loss = evaluator.evaluate_z_test(args, model)
+        if z_loss < args.max_z_loss:
+            # Save MSE on obscured region
+            final_metrics = {'final/score': obscured_loss_eval.item()}
+            logger._log_scalars(final_metrics)
+            print('z loss', z_loss) 
+            print('Final MSE value', obscured_loss_eval) 
+    
     # Last log after everything completes
     logger.log_status(inputs=input_noise,
                       targets=target_image,

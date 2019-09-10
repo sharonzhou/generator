@@ -11,7 +11,7 @@ class TrainArgParser(BaseArgParser):
 
         # Logging args
         self.parser.add_argument('--epochs_per_print', type=int, default=5,
-                                 help='Number of iterations between printing loss to the console and TensorBoard.')
+                                 help='Number of epochs between printing loss to the console and TensorBoard.')
         self.parser.add_argument('--epochs_per_eval', type=int, default=1,
                                  help='Number of epochs between evaluating model on the validation set.')
         self.parser.add_argument('--epochs_per_visual', type=int, default=50,
@@ -58,3 +58,15 @@ class TrainArgParser(BaseArgParser):
 
         # Prediction args
         self.parser.add_argument('--save_preds', action='store_true', help='Save prediction every visualize step.')
+
+        # Z-test args
+        self.parser.add_argument('--epochs_per_z_test', type=int, default=500,
+                                 help='Number of epochs between running z-test in the main training loop.')
+        self.parser.add_argument('--max_epochs', type=int, default=100,
+                                 help='Stop criteria: max number of epochs to run z-test for during the z-test training loop.')
+        self.parser.add_argument('--max_z_loss', type=float, default=0.00001,
+                help='Convergence criteria: z loss at which we start saving masked/obscured values in the outer/main training loop.')
+        self.parser.add_argument('--epochs_per_z_test_print', type=int, default=5,
+                                 help='Number of epochs between running z-test print during the z-test training loop.')
+        self.parser.add_argument('--epochs_per_z_test_visual', type=int, default=5,
+                                 help='Number of epochs between displaying z-test visuals during the z-test training loop.')
