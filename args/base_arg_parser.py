@@ -33,11 +33,17 @@ class BaseArgParser(object):
         self.parser.add_argument('--mask_name', type=str, default=None,
                                  help='Mask name to avoid backproping gradients through.')
         
+        self.parser.add_argument('--z_test_image_name', type=str, default='lena.png',
+                                 help='Image name to run z-test on.')
+        
         self.parser.add_argument('--data_dir', type=str, default='images',
                                  help='Path to image(s) to run through generator.')
 
         self.parser.add_argument('--mask_dir', type=str, default='masks',
                                  help='Path to mask(s) to run through generator.')
+        
+        self.parser.add_argument('--z_test_dir', type=str, default='z_test_images',
+                                 help='Path to z-test images to run z-test on.')
         
         self.parser.add_argument('--gpu_ids', type=str, default='0,1,2,3',
                                  help='Comma-separated list of GPU IDs. Use -1 for CPU.')
@@ -81,5 +87,7 @@ class BaseArgParser(object):
             args.device = 'cuda'
         else:
             args.device = 'cpu'
+        
+        assert args.image_name != args.z_test_image_name, 'Training image name and z-test name cannot be the same'
 
         return args

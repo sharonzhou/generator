@@ -82,10 +82,8 @@ class Evaluator(object):
         loss = torch.ones(1, requires_grad=True).to(args.device)
         if self.logger.epoch % args.epochs_per_z_test == 0: 
             # Get test image(s) from test folder
-            # Ensure not the same as any in training
-            img_test_dir = Path('test_images') #TODO nonurgent: make into args/params
-            img_test_name = 'lena.png'
-            img_test = util.get_image(img_test_dir, img_test_name)
+            # Ensure not the same as any in training (assertion in argparser)
+            img_test = util.get_image(args.z_test_dir, args.z_test_image_name)
             
             # Sample random z vector, same shape as input
             # OK if same as input b/c on held out test img
@@ -97,11 +95,9 @@ class Evaluator(object):
             # Optimizer with trainable input parameters
             optimizer = util.get_optimizer([z_test], args)
 
-            # Get the same loss fn - TODO nonurgent: play with different loss fns for this component
+            # Get the same loss fn
+            # TODO: play with different loss fns for this component
             loss_fn = util.get_loss_fn(args.loss_fn, args)
-
-            # Make deep copy of model, so we can freeze it
-            # model = deepcopy(curr_model) # TODO nonurgent: we can potentially not copy model b/c we're freezing its weights, and then just turn training off (eval on) -> but then need to unfreeze all weights after, in addition to turning train back on
             
             # Freeze all layers
             for param in model.parameters():
