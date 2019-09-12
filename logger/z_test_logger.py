@@ -14,8 +14,10 @@ class ZTestLogger(BaseLogger):
         
         self.epochs_per_print = args.epochs_per_z_test_print
         self.epochs_per_visual = args.epochs_per_z_test_visual
-        self.max_epochs = args.max_epochs
+        self.max_epochs = args.max_z_test_epochs
+        self.convergence_loss = args.max_z_test_loss
         
+        self.loss = 1.0
         self.loss_meter = util.AverageMeter()
         self.pbar = tqdm(total=self.max_epochs)
         self.train_start_time = time()
@@ -26,7 +28,7 @@ class ZTestLogger(BaseLogger):
         
         batch_size = inputs.size(0)
         
-        loss = loss.item()
+        self.loss = loss.item()
         self.loss_meter.update(loss, batch_size)
 
         # Periodically write to the log and TensorBoard
@@ -74,5 +76,5 @@ class ZTestLogger(BaseLogger):
 
     def is_finished_training(self):
         """Return True if finished training, otherwise return False."""
-        return 0 < self.max_epochs < self.epoch
+        return (self.max_epochs < self.epoch) or (self.convergence_loss > self.loss)
 

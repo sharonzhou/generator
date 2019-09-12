@@ -62,9 +62,9 @@ class TrainArgParser(BaseArgParser):
         # Z-test args
         self.parser.add_argument('--epochs_per_z_test', type=int, default=500,
                                  help='Number of epochs between running z-test in the main training loop.')
-        self.parser.add_argument('--max_epochs', type=int, default=100,
+        self.parser.add_argument('--max_z_test_epochs', type=int, default=1000,
                                  help='Stop criteria: max number of epochs to run z-test for during the z-test training loop.')
-        self.parser.add_argument('--max_z_loss', type=float, default=0.00001,
+        self.parser.add_argument('--max_z_test_loss', type=float, default=0.00001,
                 help='Convergence criteria: z loss at which we start saving masked/obscured values in the outer/main training loop.')
         self.parser.add_argument('--epochs_per_z_test_print', type=int, default=5,
                                  help='Number of epochs between running z-test print during the z-test training loop.')

@@ -159,7 +159,7 @@ def train(args):
 
         # Run z-test
         z_loss = evaluator.evaluate_z_test(args, model)
-        if z_loss < args.max_z_loss:
+        if z_loss < args.max_z_test_loss:
             # Save MSE on obscured region
             final_metrics = {'final/score': obscured_loss_eval.item()}
             logger._log_scalars(final_metrics)
