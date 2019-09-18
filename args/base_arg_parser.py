@@ -21,7 +21,7 @@ class BaseArgParser(object):
         self.parser.add_argument('--model', type=str, choices=('DeepDecoderNet'), default='DeepDecoderNet',
                                  help='Model to use. Basic conv1x1 from the Deep Decoder paper is currently the only model available')
 
-        self.parser.add_argument('--batch_size', type=int, default=1,
+        self.parser.add_argument('--batch_size', type=int, default=2,
                                  help='Batch size.')
 
         self.parser.add_argument('--ckpt_path', type=str, default='',
@@ -77,6 +77,7 @@ class BaseArgParser(object):
         args.save_dir = save_dir
 
         args.start_epoch = 1  # Gets updated if we load a checkpoint
+        args.start_iter = 1
         args.is_training = self.is_training
 
         # Set up available GPUs

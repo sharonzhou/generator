@@ -10,13 +10,13 @@ class TrainArgParser(BaseArgParser):
         self.is_training = True
 
         # Logging args
-        self.parser.add_argument('--epochs_per_print', type=int, default=5,
+        self.parser.add_argument('--steps_per_print', type=int, default=5,
                                  help='Number of epochs between printing loss to the console and TensorBoard.')
-        self.parser.add_argument('--epochs_per_eval', type=int, default=1,
+        self.parser.add_argument('--steps_per_eval', type=int, default=1,
                                  help='Number of epochs between evaluating model on the validation set.')
-        self.parser.add_argument('--epochs_per_visual', type=int, default=50,
+        self.parser.add_argument('--steps_per_visual', type=int, default=50,
                                  help='Number of epochs between visualizing training examples.')
-        self.parser.add_argument('--epochs_per_save', type=int, default=3,
+        self.parser.add_argument('--steps_per_save', type=int, default=3,
                                  help='Number of epochs between saving a checkpoint to save_dir.')
         self.parser.add_argument('--max_ckpts', type=int, default=5,
                                  help='Number of recent ckpts to keep before overwriting old ones.')
@@ -60,13 +60,13 @@ class TrainArgParser(BaseArgParser):
         self.parser.add_argument('--save_preds', action='store_true', help='Save prediction every visualize step.')
 
         # Z-test args
-        self.parser.add_argument('--epochs_per_z_test', type=int, default=500,
+        self.parser.add_argument('--steps_per_z_test', type=int, default=500,
                                  help='Number of epochs between running z-test in the main training loop.')
         self.parser.add_argument('--max_z_test_epochs', type=int, default=1000,
                                  help='Stop criteria: max number of epochs to run z-test for during the z-test training loop.')
         self.parser.add_argument('--max_z_test_loss', type=float, default=0.00001,
                 help='Convergence criteria: z loss at which we start saving masked/obscured values in the outer/main training loop.')
-        self.parser.add_argument('--epochs_per_z_test_print', type=int, default=5,
+        self.parser.add_argument('--steps_per_z_test_print', type=int, default=5,
                                  help='Number of epochs between running z-test print during the z-test training loop.')
-        self.parser.add_argument('--epochs_per_z_test_visual', type=int, default=5,
+        self.parser.add_argument('--steps_per_z_test_visual', type=int, default=5,
                                  help='Number of epochs between displaying z-test visuals during the z-test training loop.')

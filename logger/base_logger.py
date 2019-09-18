@@ -35,11 +35,13 @@ class BaseLogger(object):
         self.log_path = os.path.join(self.save_dir, '{}.log'.format(args.name))
 
         self.epoch = args.start_epoch
+        self.iter = args.start_iter
+        self.global_step = args.start_iter
 
 
     def _log_text(self, text_dict):
         for k, v in text_dict.items():
-            self.summary_writer.add_text(k, str(v), self.epoch)
+            self.summary_writer.add_text(k, str(v), self.global_step)
 
 
     def _log_scalars(self, scalar_dict, print_to_stdout=True):
@@ -48,7 +50,7 @@ class BaseLogger(object):
             if print_to_stdout:
                 self.write('[{}: {:.3g}]'.format(k, v))
             k = k.replace('_', '/')  # Group in TensorBoard by phase
-            self.summary_writer.add_scalar(k, v, self.epoch)
+            self.summary_writer.add_scalar(k, v, self.global_step)
 
     def _plot_curves(self, curves_dict):
         """Plot all curves in a dict as RGB images to TensorBoard."""
@@ -80,7 +82,7 @@ class BaseLogger(object):
 
             curve_img = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
             curve_img = curve_img.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-            self.summary_writer.add_image(name.replace('_', '/'), curve_img, global_step=self.epoch)
+            self.summary_writer.add_image(name.replace('_', '/'), curve_img, global_step=self.global_step)
 
     def debug_visualize(self, tensors, unique_suffix=None):
         """Visualize in TensorBoard.
@@ -109,9 +111,9 @@ class BaseLogger(object):
         if unique_suffix is not None:
             tag += '_{}'.format(unique_suffix)
 
-        self.summary_writer.add_image(tag, np.uint8(visuals_np), self.epoch)
+        self.summary_writer.add_image(tag, np.uint8(visuals_np), self.global_step)
 
-    def visualize(self, probs, targets, obscured_probs, phase, epoch, unique_suffix=None, make_separate_prediction_img=False):
+    def visualize(self, probs, targets, obscured_probs, phase, unique_suffix=None, make_separate_prediction_img=False):
         """Visualize predictions and targets in TensorBoard.
         Args:
             probs: Probabilities outputted by the model.
@@ -131,11 +133,11 @@ class BaseLogger(object):
         targets = targets.numpy().copy()
         targets_np = util.convert_image_from_tensor(targets)
 
-        if phase == "z_test":
+        if phase == "z-test":
             visuals = [probs_np, targets_np]
             
             title = 'target_pred'
-            visuals_image_name = f'{title}-{epoch}.png'
+            visuals_image_name = f'{title}-{self.global_step}.png'
             log_dir_z_test = os.path.join(self.log_dir, 'z_test')
             os.makedirs(log_dir_z_test, exist_ok=True)
             visuals_image_path = os.path.join(log_dir_z_test, visuals_image_name)
@@ -146,7 +148,7 @@ class BaseLogger(object):
             visuals = [probs_np, targets_np, abs_diff, obscured_probs_np]
         
             title = 'pred_target_diff_obscured'
-            visuals_image_name = f'{title}-{epoch}.png'
+            visuals_image_name = f'{title}-{self.global_step}.png'
             visuals_image_path = os.path.join(self.log_dir, visuals_image_name)
             
         visuals_np = util.concat_images(visuals)
@@ -158,7 +160,7 @@ class BaseLogger(object):
         if unique_suffix is not None:
             tag += '_{}'.format(unique_suffix)
 
-        self.summary_writer.add_image(tag, np.uint8(visuals_np), self.epoch)
+        self.summary_writer.add_image(tag, np.uint8(visuals_np), self.global_step)
 
     def write(self, message, print_to_stdout=True):
         """Write a message to the log. If print_to_stdout is True, also print to stdout."""

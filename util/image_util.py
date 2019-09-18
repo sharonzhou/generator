@@ -11,7 +11,7 @@ import torchvision.transforms as transforms
 from torch.autograd import Variable
 
 
-def get_image(img_dir, img_name):
+def get_image(img_dir, img_name, use_cpu=False, squeeze=False):
     # Load data and image
     img_dir = Path(img_dir)
     img_path = img_dir / img_name
@@ -22,11 +22,13 @@ def get_image(img_dir, img_name):
     transforms_list += [transforms.ToTensor()]
     transform = transforms.Compose([t for t in transforms_list if t])
     img = transform(img)
-    img = torch.unsqueeze(img, 0)
-   
-    if torch.cuda.is_available():
-        img = img.cuda()
 
+    if not squeeze:
+        img = torch.unsqueeze(img, 0)
+   
+    if torch.cuda.is_available() and not use_cpu:
+        img = img.cuda()
+    
     return img
    
 def get_target_image(args):

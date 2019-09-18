@@ -12,8 +12,8 @@ class ZTestLogger(BaseLogger):
 
         self.experiment_name = args.name
         
-        self.epochs_per_print = args.epochs_per_z_test_print
-        self.epochs_per_visual = args.epochs_per_z_test_visual
+        self.steps_per_print = args.steps_per_z_test_print
+        self.steps_per_visual = args.steps_per_z_test_visual
         self.max_epochs = args.max_z_test_epochs
         self.convergence_loss = args.max_z_test_loss
         
@@ -32,22 +32,22 @@ class ZTestLogger(BaseLogger):
         self.loss_meter.update(loss, batch_size)
 
         # Periodically write to the log and TensorBoard
-        if self.epoch % self.epochs_per_print == 0:
+        if self.global_step % self.steps_per_print == 0:
 
             # Write a header for the log entry
             duration = time() - self.train_start_time
             hours, rem = divmod(duration, 3600)
             minutes, seconds = divmod(rem, 60)
             
-            message = f'[z-test][epoch: {self.epoch}, time: {int(hours):0>2}:{int(minutes):0>2}:{seconds:05.2f}, loss: {self.loss_meter.avg:.3g}]'
+            message = f'[z-test][epoch: {self.epoch}, step: {self.global_step}, time: {int(hours):0>2}:{int(minutes):0>2}:{seconds:05.2f}, loss: {self.loss_meter.avg:.3g}]'
             self.pbar.set_description(message)
             
             # Write all errors as scalars to the graph
             self._log_scalars({'loss': self.loss_meter.avg}, print_to_stdout=False)
 
         # Periodically visualize up to num_visuals training examples from the batch
-        if self.epoch % self.epochs_per_visual == 0 or force_visualize:
-            self.visualize(probs, targets, probs, phase='z_test', epoch=self.epoch)
+        if self.global_step % self.steps_per_visual == 0 or force_visualize:
+            self.visualize(probs, targets, probs, phase='z_test')
 
             if save_preds:
                 probs_image_name = f'prediction-{epoch}.png'

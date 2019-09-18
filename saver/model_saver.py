@@ -11,7 +11,7 @@ class ModelSaver(object):
         """
         Args:
             save_dir: Directory to save checkpoints.
-            epochs_per_save: Number of epochs between each save.
+            steps_per_save: Number of steps between each save.
             max_ckpts: Maximum number of checkpoints to keep before overwriting old ones.
             metric_name: Name of metric used to determine best model.
             maximize_metric: Bool of whether the objective is to maximize or minimize the metric.
@@ -19,7 +19,7 @@ class ModelSaver(object):
         super(ModelSaver, self).__init__()
 
         self.save_dir = args.save_dir
-        self.epochs_per_save = args.epochs_per_save
+        self.steps_per_save = args.steps_per_save
         self.max_ckpts = args.max_ckpts
         self.metric_name = args.best_ckpt_metric
         self.maximize_metric = maximize_metric
@@ -35,21 +35,21 @@ class ModelSaver(object):
                 or (self.maximize_metric and self.best_metric_val < metric_val)
                 or (not self.maximize_metric and self.best_metric_val > metric_val))
 
-    def save(self, epoch, model, optimizer, device, metric_val):
-        """If this epoch corresponds to a save epoch, save model parameters to disk.
+    def save(self, global_step, model, optimizer, device, metric_val):
+        """If this step corresponds to a save step, save model parameters to disk.
         Args:
-            epoch: Epoch to stamp on the checkpoint.
+            global_step: Iter to stamp on the checkpoint.
             model: Model to save.
             optimizer: Optimizer for model parameters.
             lr_scheduler: Learning rate scheduler for optimizer. (not included right now)
             device: Device where the model/optimizer parameters belong.
             metric_val: Value for determining whether checkpoint is best so far.
         """
-        if epoch % self.epochs_per_save != 0:
+        if global_step % self.steps_per_save != 0:
             return
 
         ckpt_dict = {
-            'ckpt_info': {'epoch': epoch, self.metric_name: metric_val},
+            'ckpt_info': {'global_step': global_step, self.metric_name: metric_val},
             'model_name': model.module.__class__.__name__,
             'model_args': model.module.args_dict(),
             'model_state': model.to('cpu').state_dict(),
@@ -58,7 +58,7 @@ class ModelSaver(object):
         }
         model.to(device)
 
-        ckpt_path = os.path.join(self.save_dir, 'epoch_{}.pth.tar'.format(epoch))
+        ckpt_path = os.path.join(self.save_dir, 'step_{}.pth.tar'.format(global_step))
         torch.save(ckpt_dict, ckpt_path)
 
         if self._is_best(metric_val):
@@ -80,7 +80,7 @@ class ModelSaver(object):
             ckpt_path: Path to checkpoint to load.
             gpu_ids: GPU IDs for DataParallel.
         Returns:
-            Model loaded from checkpoint, dict of additional checkpoint info (e.g. epoch, metric).
+            Model loaded from checkpoint, dict of additional checkpoint info (e.g. global_step, metric).
         """
         device = 'cuda:{}'.format(gpu_ids[0]) if len(gpu_ids) > 0 else 'cpu'
         ckpt_dict = torch.load(ckpt_path, map_location=device)

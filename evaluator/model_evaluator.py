@@ -27,12 +27,61 @@ class Evaluator(object):
         # Parameters for both
         self.input_noise = input_noise
         self.logger = logger
+
+        # Z-test only
+        # Get the same loss fn
+        # TODO: play with different loss fns for this component
+        self.z_test_loss_fn = util.get_loss_fn(args.loss_fn, args)
         
-        # Mask evaluation alone
+        # Mask evaluation
         self.mask = mask
         self.target_image = target_image
         self.masked_target_image = self.target_image * self.mask
         self.obscured_target_image = self.target_image * (1.0 - self.mask)
+
+
+    def evaluate_z_test(self, args, z_test, target, model, **kwargs):
+        og_z_test = deepcopy(z_test)
+        print('does requires grad come iwth?', z_test)
+
+
+        loss = torch.ones(1, requires_grad=True).to(args.device)
+        if self.logger.global_step % args.steps_per_z_test == 0: 
+            # Will need to backprop into the input
+            z_test = z_test.requires_grad_()
+
+            # Optimizer with trainable input parameters
+            optimizer = util.get_optimizer([z_test], args)
+            
+            # Freeze all layers
+            for param in model.parameters():
+                param.requires_grad = False
+
+            # Use model in eval mode for dropout/BN layers to behave their best
+            model.eval()
+
+            with torch.set_grad_enabled(True):
+                if args.use_intermediate_logits:
+                    logits = model.forward(z_test).float()
+                    probs = F.sigmoid(logits) 
+                else:
+                    probs = model.forward(z_test).float()
+
+                loss = self.z_test_loss_fn(probs, target).mean()
+
+                loss.backward()
+                optimizer.step() 
+                optimizer.zero_grad()
+                
+            # Unfreeze all layers
+            for param in model.parameters():
+                param.requires_grad = True
+
+            model.train()
+        
+        print('sanity ztest', torch.sum(og_z_test), torch.sum(z_test))
+        
+        return z_test, loss #TODO! debug that z-test actually changes...
 
     """
     def evaluate_mask(self, batch_size, model, probs):
@@ -77,76 +126,3 @@ class Evaluator(object):
 
         return model
     """
-
-    def evaluate_z_test(self, args, model, **kwargs):
-        loss = torch.ones(1, requires_grad=True).to(args.device)
-        if self.logger.epoch % args.epochs_per_z_test == 0: 
-            # Get test image(s) from test folder
-            # Ensure not the same as any in training (assertion in argparser)
-            img_test = util.get_image(args.z_test_dir, args.z_test_image_name)
-            
-            # Sample random z vector, same shape as input
-            # OK if same as input b/c on held out test img
-            z_test = deepcopy(self.input_noise)
-            
-            # Will need to backprop into the input
-            z_test = z_test.requires_grad_()
-
-            # Optimizer with trainable input parameters
-            optimizer = util.get_optimizer([z_test], args)
-
-            # Get the same loss fn
-            # TODO: play with different loss fns for this component
-            loss_fn = util.get_loss_fn(args.loss_fn, args)
-            
-            # Freeze all layers
-            for param in model.parameters():
-                param.requires_grad = False
-
-            # Use model in eval mode for dropout/BN layers to behave their best
-            model.eval()
-
-            # Instantiate new Z-test logger
-            logger = ZTestLogger(args)
-
-            # Train model
-            while not logger.is_finished_training():
-                logger.start_epoch()
-
-                with torch.set_grad_enabled(True):
-                    if args.use_intermediate_logits:
-                        logits = model.forward(z_test).float()
-                        probs = F.sigmoid(logits) 
-                    else:
-                        probs = model.forward(z_test).float()
-
-                    loss = loss_fn(probs, img_test).mean()
-
-                    loss.backward()
-                    optimizer.step()
-                    optimizer.zero_grad()
-                
-                logger.log_status(inputs=z_test,
-                                  targets=img_test,
-                                  probs=probs,
-                                  loss=loss,
-                                  save_preds=args.save_preds,
-                                  )
-
-                logger.end_epoch()
-                
-            # Last log after everything completes
-            logger.log_status(inputs=z_test,
-                              targets=img_test,
-                              probs=probs,
-                              loss=loss,
-                              save_preds=args.save_preds,
-                              force_visualize=True,
-                              )
-
-            # Unfreeze all layers
-            for param in model.parameters():
-                param.requires_grad = True
-
-            model.train()
-        return loss
