@@ -10,13 +10,11 @@ class TrainArgParser(BaseArgParser):
         self.is_training = True
 
         # Logging args
-        self.parser.add_argument('--steps_per_print', type=int, default=5,
+        self.parser.add_argument('--steps_per_print', type=int, default=32,
                                  help='Number of epochs between printing loss to the console and TensorBoard.')
-        self.parser.add_argument('--steps_per_eval', type=int, default=1,
-                                 help='Number of epochs between evaluating model on the validation set.')
-        self.parser.add_argument('--steps_per_visual', type=int, default=50,
+        self.parser.add_argument('--steps_per_visual', type=int, default=32,
                                  help='Number of epochs between visualizing training examples.')
-        self.parser.add_argument('--steps_per_save', type=int, default=3,
+        self.parser.add_argument('--steps_per_save', type=int, default=32,
                                  help='Number of epochs between saving a checkpoint to save_dir.')
         self.parser.add_argument('--max_ckpts', type=int, default=5,
                                  help='Number of recent ckpts to keep before overwriting old ones.')

@@ -27,15 +27,6 @@ class BaseArgParser(object):
         self.parser.add_argument('--ckpt_path', type=str, default='',
                                  help='Path to checkpoint to load. If empty, start from scratch.')
 
-        self.parser.add_argument('--image_name', type=str, default='lena.png',
-                                 help='Image name to train on (to compress).')
-
-        self.parser.add_argument('--mask_name', type=str, default=None,
-                                 help='Mask name to avoid backproping gradients through.')
-        
-        self.parser.add_argument('--z_test_image_name', type=str, default='lena.png',
-                                 help='Image name to run z-test on.')
-        
         self.parser.add_argument('--data_dir', type=str, default='images',
                                  help='Path to image(s) to run through generator.')
 
@@ -58,7 +49,7 @@ class BaseArgParser(object):
        
         self.parser.add_argument('--toy', action='store_true', help='Use small dataset or not.')
 
-        self.parser.add_argument('--num_visuals', type=int, default=4, help='Number of visuals to display per eval.')
+        self.parser.add_argument('--num_visuals', type=int, default=4, help='Max number of visuals to display per eval.')
 
         # Custom parameters for model input and model architecture depending on input image
         self.parser.add_argument('--use_custom_input_noise', action='store_true', help='Use custom noise -- relevant only for Deep Decoder Net right now.')
@@ -76,9 +67,13 @@ class BaseArgParser(object):
             fh.write('\n')
         args.save_dir = save_dir
 
-        args.start_epoch = 1  # Gets updated if we load a checkpoint
-        args.start_iter = 1
+        args.start_epoch = 0  # Gets updated if we load a checkpoint
+        args.start_iter = 0
         args.is_training = self.is_training
+
+        assert args.steps_per_save % args.batch_size == 0, 'Steps per save ({args.steps_per_save}) need to be a multiple of batch size ({args.batch_size}).'
+        assert args.steps_per_visual % args.batch_size == 0, 'Steps per visual ({args.steps_per_visual}) need to be a multiple of batch size ({args.batch_size}).'
+        assert args.steps_per_print % args.batch_size == 0, 'Steps per print ({args.steps_per_print}) need to be a multiple of batch size ({args.batch_size}).'
 
         # Set up available GPUs
         args.gpu_ids = util.args_to_list(args.gpu_ids, allow_empty=True, arg_type=int, allow_negative=False)
@@ -89,6 +84,4 @@ class BaseArgParser(object):
         else:
             args.device = 'cpu'
         
-        assert args.image_name != args.z_test_image_name, 'Training image name and z-test name cannot be the same'
-
         return args

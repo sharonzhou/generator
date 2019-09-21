@@ -1,13 +1,17 @@
-import matplotlib.pyplot as plt
-import numpy as np
 import os
-import torch
-import torch.nn.functional as F
-import util
-from PIL import Image
+import random
+import numpy as np
+import matplotlib.pyplot as plt
 
+from PIL import Image
 from datetime import datetime
 from tensorboardX import SummaryWriter
+
+import torch
+import torch.nn.functional as F
+
+import util
+
 
 plt.switch_backend('agg')
 
@@ -113,11 +117,11 @@ class BaseLogger(object):
 
         self.summary_writer.add_image(tag, np.uint8(visuals_np), self.global_step)
 
-    def visualize(self, probs, targets, obscured_probs, phase, unique_suffix=None, make_separate_prediction_img=False):
+    def visualize(self, probs_batch, targets_batch, obscured_probs_batch, phase, unique_suffix=None, make_separate_prediction_img=False):
         """Visualize predictions and targets in TensorBoard.
         Args:
-            probs: Probabilities outputted by the model.
-            targets: Target labels for the inputs.
+            probs_batch: Probabilities outputted by the model, in minibatch.
+            targets_batch: Target labels for the inputs, in minibatch.
             phase: One of 'train', 'val', or 'test'.
             unique_suffix: A unique suffix to append to every image title. Allows
               for displaying all visualizations separately on TensorBoard.
@@ -125,42 +129,56 @@ class BaseLogger(object):
             Number of examples visualized to TensorBoard.
         """
 
-        probs = probs.detach().to('cpu')
-        probs = probs.numpy().copy()
-        probs_np = util.convert_image_from_tensor(probs)
+        probs_batch = probs_batch.detach().to('cpu')
+        probs_batch = probs_batch.numpy().copy()
 
-        targets = targets.detach().to('cpu')
-        targets = targets.numpy().copy()
-        targets_np = util.convert_image_from_tensor(targets)
-
-        if phase == "z-test":
-            visuals = [probs_np, targets_np]
+        targets_batch = targets_batch.detach().to('cpu')
+        targets_batch = targets_batch.numpy().copy()
+        
+        obscured_probs_batch = obscured_probs_batch.detach().to('cpu')
+        obscured_probs_batch = obscured_probs_batch.numpy().copy()
+        
+        batch_size = targets_batch.shape[0] # Do not use self.batch_size -- this is local, handling edge cases
+        visual_indices = random.sample(range(batch_size), min(self.num_visuals, batch_size))
+        for i in visual_indices:
+            probs = probs_batch[i]
+            targets = targets_batch[i]
+            obscured_probs = obscured_probs_batch[i]
             
-            title = 'target_pred'
-            visuals_image_name = f'{title}-{self.global_step}.png'
-            log_dir_z_test = os.path.join(self.log_dir, 'z_test')
-            os.makedirs(log_dir_z_test, exist_ok=True)
-            visuals_image_path = os.path.join(log_dir_z_test, visuals_image_name)
-        else:
-            abs_diff = np.abs(targets_np - probs_np)
+            probs_np = util.convert_image_from_tensor(probs)
+            targets_np = util.convert_image_from_tensor(targets)
             obscured_probs_np = util.convert_image_from_tensor(obscured_probs)
 
-            visuals = [probs_np, targets_np, abs_diff, obscured_probs_np]
-        
-            title = 'pred_target_diff_obscured'
-            visuals_image_name = f'{title}-{self.global_step}.png'
-            visuals_image_path = os.path.join(self.log_dir, visuals_image_name)
-            
-        visuals_np = util.concat_images(visuals)
-        visuals_pil = Image.fromarray(visuals_np)
-        
-        visuals_pil.save(visuals_image_path)
-        
-        tag = f'{phase}/{title}'
-        if unique_suffix is not None:
-            tag += '_{}'.format(unique_suffix)
+            if phase == "z-test":
+                visuals = [probs_np, targets_np]
+                
+                title = 'target_pred'
+                visuals_image_name = f'{title}-{self.global_step}-{i}.png'
+                log_dir_z_test = os.path.join(self.log_dir, 'z_test')
+                os.makedirs(log_dir_z_test, exist_ok=True)
+                visuals_image_path = os.path.join(log_dir_z_test, visuals_image_name)
+            else:
+                abs_diff = np.abs(targets_np - probs_np)
 
-        self.summary_writer.add_image(tag, np.uint8(visuals_np), self.global_step)
+                visuals = [probs_np, targets_np, abs_diff, obscured_probs_np]
+            
+                title = 'pred_target_diff_obscured'
+                visuals_image_name = f'{title}-{self.global_step}-{i}.png'
+                log_dir_mask = os.path.join(self.log_dir, 'mask')
+                os.makedirs(log_dir_mask, exist_ok=True)
+                visuals_image_path = os.path.join(log_dir_mask, visuals_image_name)
+                
+            visuals_np = util.concat_images(visuals)
+            visuals_pil = Image.fromarray(visuals_np)
+           
+            if make_separate_prediction_img:
+                visuals_pil.save(visuals_image_path)
+            
+            tag = f'{phase}/{title}'
+            if unique_suffix is not None:
+                tag += '_{}'.format(unique_suffix)
+            
+            self.summary_writer.add_image(tag, np.uint8(visuals_np), self.global_step)
 
     def write(self, message, print_to_stdout=True):
         """Write a message to the log. If print_to_stdout is True, also print to stdout."""

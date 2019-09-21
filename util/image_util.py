@@ -79,12 +79,24 @@ def normalize_to_image(img):
 
 def convert_image_from_tensor(image):
     image = np.array(image)
-
-    # Remove batchsize
-    image = np.squeeze(image, 0)
     
-    # Move channel to last in shape
-    image = np.moveaxis(image, 0, -1)
+    # Image without batch dim
+    if len(image.shape) == 3:
+        image = np.moveaxis(image, 0, -1)
+    # Image batchsize 1 case
+    elif len(image.shape) == 4 and image.shape[0] == 1:
+        # Remove batchsize
+        image = np.squeeze(image, 0)
+        
+        # Move channel to last in shape
+        image = np.moveaxis(image, 0, -1)
+    # Image batchsize > 1 case
+    elif len(image.shape) == 4 and image.shape[0] > 1:
+        # Move channel to last in shape, maintaining batch size in beginning
+        image = np.transpose(image, (0, 2, 3, 1))
+    else:
+        print(f'Function does not support this image shape {image.shape}')
+        raise
 
     # Normalize
     image = normalize_to_image(image)
@@ -103,11 +115,11 @@ def concat_images(images, spacing=10):
     Returns: Numpy array. Result of concatenating the images in images into a single row.
     """
     # Make array of all white pixels with enough space for all concatenated images
-
+    
     row_index = 0
     col_index = 1
     channel_index = 2
-
+    
     assert spacing >= 0, 'Invalid argument: spacing {} is not non-negative'.format(spacing)
     assert len(images) > 0, 'Invalid argument: images must be non-empty'
     num_rows = images[0].shape[row_index]
