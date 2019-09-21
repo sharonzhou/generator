@@ -42,7 +42,7 @@ class BaseArgParser(object):
         self.parser.add_argument('--mask_dir', type=str, default='masks',
                                  help='Path to mask(s) to run through generator.')
         
-        self.parser.add_argument('--z_test_dir', type=str, default='z_test_images',
+        self.parser.add_argument('--z_test_target_dir', type=str, default='z_test_images',
                                  help='Path to z-test images to run z-test on.')
         
         self.parser.add_argument('--gpu_ids', type=str, default='0,1,2,3',

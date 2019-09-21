@@ -42,7 +42,7 @@ class DeepDecoderNet(BaseNet):
 
         self.num_channels = num_channels # AKA. k
         self.num_up = num_up # AKA. num_channels_up
-        self.num_output_channels = target_image_shape[1]
+        self.num_output_channels = target_image_shape[0]
 
         if not self.use_custom_input_noise:
             # Added FC layer to account for standard noise vector
@@ -80,6 +80,14 @@ class DeepDecoderNet(BaseNet):
         
         self.model = nn.Sequential(*layers)
         
+
+        # DEBUGGING
+        self.upsample = Upsample(scale_factor=2, mode='bilinear')
+        self.conv = nn.Conv2d(self.num_channels, self.num_channels, 1)
+        self.bn = nn.BatchNorm2d(self.num_channels)
+        self.relu = nn.ReLU(inplace=True)
+        self.last_conv = nn.Conv2d(self.num_channels, self.num_output_channels, 1)
+        self.sigmoid = nn.Sigmoid()
 
     def forward(self, X):
         """

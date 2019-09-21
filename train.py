@@ -11,6 +11,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
+import numpy as np
 from copy import deepcopy
 
 import util
@@ -21,45 +22,18 @@ from logger import TrainLogger
 from saver import ModelSaver
 
 def train(args):
-   
-    # TODO: now with loader, remove target image dependency up here
-    # Instantiate input and target: Input is noise tensor, target is image
-    target_image = util.get_target_image(args).float()
-    input_noise = util.get_input_noise() 
+    # Get loader for outer loop training
+    loader = get_loader(args)
+    target_image_shape = loader.dataset.target_image_shape
+    setattr(args, 'target_image_shape', target_image_shape)
 
-    # Instantiate mask
-    setattr(args, 'target_image_shape', target_image.shape)
-    mask = util.get_mask(args)
-    setattr(args, 'mask', mask)
-    
-    # For deep decoder net input, reshape input noise and do not parallelize
-    if args.model == 'DeepDecoderNet':
-        if args.use_custom_input_noise:
-            input_noise = util.get_deep_decoder_input_noise(target_image.shape)
-        else:
-            # Do not parallelize (reshape noise has issues in fc layer), use 1st gpu
-            gpu_ids = args.gpu_ids
-            gpu_id = [gpu_ids[0]]
-            setattr(args, 'gpu_ids', gpu_id)
-    
-    z_test = deepcopy(input_noise)
-    z_test = z_test.requires_grad_()
-
-    print(f'Input: {input_noise.shape}')
-    print(f'Target: {target_image.shape}')
-    if mask is not None:
-        print(f'Mask: {mask.shape}')
-
-# Load model
+    # Load model
     model_fn = models.__dict__[args.model]
     model = model_fn(**vars(args))
     model = nn.DataParallel(model, args.gpu_ids)
     model = model.to(args.device)
     model.train()
 
-    # Get loader for outer loop training
-    loader = get_loader(args)
-  
     # Print model parameters
     print('Model parameters: name, size, mean, std')
     for name, param in model.named_parameters():
@@ -69,8 +43,7 @@ def train(args):
     parameters = model.parameters()
     optimizer = util.get_optimizer(parameters, args)
     loss_fn = util.get_loss_fn(args.loss_fn, args)
-    
-    z_optimizer = util.get_optimizer([z_test], args)
+  
     z_loss_fn = util.get_loss_fn(args.loss_fn, args)
 
     # Get logger, saver 
@@ -82,19 +55,22 @@ def train(args):
 
     # Train model
     logger.log_hparams(args)
+    batch_size = args.batch_size
     while not logger.is_finished_training():
         logger.start_epoch()
         
-        for target, z_test_target in loader: 
+        for input_noise, target_image, mask, z_test_target, z_test in loader: 
             logger.start_iter()
-            
+           
             if torch.cuda.is_available():
-                target = target.cuda()
+                input_noise = input_noise.to(args.device) #.cuda()
+                target_image = target_image.cuda()
+                mask = mask.cuda()
+                z_test = z_test.cuda()
                 z_test_target = z_test_target.cuda()
             
-            if mask is not None:
-                masked_target_image = target_image * mask
-                obscured_target_image = target_image * (1.0 - mask)
+            masked_target_image = target_image * mask
+            obscured_target_image = target_image * (1.0 - mask)
 
             # Input is noise tensor, target is image
             model.train()
@@ -146,6 +122,7 @@ def train(args):
                 obscured_loss_eval = loss_fn(obscured_probs_eval, obscured_target_image).mean()
             
             # With backprop on only the input z, (4) run one step of z-test and get z-loss
+            z_optimizer = util.get_optimizer([z_test.requires_grad_()], args)
             with torch.set_grad_enabled(True):
                 if args.use_intermediate_logits:
                     z_logits = model.forward(z_test).float()

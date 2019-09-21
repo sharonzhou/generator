@@ -23,7 +23,7 @@ class TrainLogger(BaseLogger):
         self.masked_loss_eval_meter = util.AverageMeter()
         self.obscured_loss_eval_meter = util.AverageMeter()
         self.full_loss_eval_meter = util.AverageMeter()
-        self.z_loss_eval_meter = util.AverageMeter()
+        self.z_loss_meter = util.AverageMeter()
         
         self.pbar = tqdm(total=args.num_epochs)
         self.train_start_time = time()
@@ -41,7 +41,7 @@ class TrainLogger(BaseLogger):
     def log_status(self, inputs, targets, probs, masked_probs, masked_loss,
                    probs_eval, masked_probs_eval, obscured_probs_eval,
                    masked_loss_eval, obscured_loss_eval, full_loss_eval, 
-                   z_probs, z_loss, save_preds=False, force_visualize=False):
+                   z_target, z_probs, z_loss, save_preds=False, force_visualize=False):
         """Log results and status of training."""
         
         batch_size = inputs.size(0)
@@ -74,7 +74,7 @@ class TrainLogger(BaseLogger):
             self._log_scalars({'loss_masked-eval': self.masked_loss_eval_meter.avg}, print_to_stdout=False)
             self._log_scalars({'loss_obscured': self.obscured_loss_eval_meter.avg}, print_to_stdout=False)
             self._log_scalars({'loss_all': self.full_loss_eval_meter.avg}, print_to_stdout=False)
-            self._log_scalars({'z_loss': self.z_loss_eval_meter.avg}, print_to_stdout=False)
+            self._log_scalars({'z_loss': self.z_loss_meter.avg}, print_to_stdout=False)
 
         # Periodically visualize up to num_visuals training examples from the batch
         if self.global_step % self.steps_per_visual == 0 or force_visualize:

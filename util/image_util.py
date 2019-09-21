@@ -11,7 +11,7 @@ import torchvision.transforms as transforms
 from torch.autograd import Variable
 
 
-def get_image(img_dir, img_name, use_cpu=False, squeeze=False):
+def get_image(img_dir, img_name, use_cpu=True, squeeze=True):
     # Load data and image
     img_dir = Path(img_dir)
     img_path = img_dir / img_name
@@ -30,22 +30,6 @@ def get_image(img_dir, img_name, use_cpu=False, squeeze=False):
         img = img.cuda()
     
     return img
-   
-def get_target_image(args):
-    return get_image(args.data_dir, args.image_name)
-
-def get_mask(args):
-    if not args.mask_dir or not args.mask_name:
-        mask = torch.ones(args.target_image_shape)
-    else:
-        # Load mask
-        mask = get_image(args.mask_dir, args.mask_name)
-        mask = mask.float()
-    
-    if torch.cuda.is_available():
-        mask = mask.cuda()
-  
-    return mask
 
 def get_input_noise(dist='gaussian', latent_dim=100):
     # Sample a fixed noise vector z \in R^latent_dim
@@ -66,7 +50,7 @@ def get_deep_decoder_input_noise(image_shape, dist='gaussian', num_channels=128,
     total_upsample = 2 ** num_up
 
     height = int(image_shape[2] / total_upsample)
-    width = int(image_shape[3] / total_upsample)
+    width = int(image_shape[2] / total_upsample) # Making height/width the same
 
     noise_shape = [1, num_channels, height, width]
     noise_tensor = Variable(torch.zeros(noise_shape))
