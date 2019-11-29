@@ -11,7 +11,12 @@ sys.path.append(str(Path(__file__).absolute().parent.parent))
 
 import torch.nn as nn
 from torchvision import models
+
 from models.deep_decoder_net import DeepDecoderNet
+from models.stylegan import StyleGenerator
 
 # Make sure to add to this as you write models.
-model_dict = {'deepdecodernet': DeepDecoderNet}
+model_dict = {
+                'deepdecodernet': DeepDecoderNet,
+                'stylegan': StyleGenerator,
+             }
