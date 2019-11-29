@@ -20,7 +20,7 @@ import util
 import models
 from data import get_loader
 from args import TrainArgParser
-from logger import TrainLogger
+from logger import TestLogger
 from saver import ModelSaver
 
 def test(args):
@@ -51,7 +51,7 @@ def test(args):
     z_loss_fn = util.get_loss_fn(args.loss_fn, args)
 
     # Get logger, saver 
-    logger = TrainLogger(args)
+    logger = TestLogger(args)
     saver = ModelSaver(args)
     
     print(f'Logs: {logger.log_dir}')
@@ -118,23 +118,18 @@ def test(args):
             # TODO: figure out criteria for saving - and technically just saving z-test value for each image? Model doesn't 
             # change don't need to save the model - same ckpt
             metrics = {'masked_loss': z_loss.item()}
-            saver.save(logger.global_step, model, optimizer, args.device, metric_val=metrics.get(args.best_ckpt_metric, None))        
+            #saver.save(logger.global_step, model, optimizer, args.device, metric_val=metrics.get(args.best_ckpt_metric, None))        
             # Log both train and eval model settings, and visualize their outputs
             # TODO: change these inputs - maybe separate fcn
-            logger.log_status(inputs=input_noise,
-                              targets=z_test_target_image,
-                              probs=z_probs,
-                              masked_probs=masked_z_probs,
-                              masked_loss=masked_loss,
-                              probs_eval=z_probs, # Same as probs in this case
-                              masked_probs_eval=masked_probs_eval,
-                              obscured_probs_eval=obscured_probs_eval,
-                              masked_loss_eval=masked_loss_eval,
-                              obscured_loss_eval=obscured_loss_eval,
-                              full_loss_eval=full_loss_eval,
-                              z_target=z_test_target,
-                              z_probs=z_probs,
-                              z_loss=z_loss,
+            logger.log_status(masked_probs=masked_z_probs,
+                              masked_loss=z_loss,
+                              masked_test_target=masked_z_test_target,
+                              full_probs=z_probs,
+                              full_loss=full_z_loss,
+                              full_test_target=z_test_target,
+                              obscured_probs=obscured_z_probs,
+                              obscured_loss=obscured_z_loss,
+                              obscured_test_target=obscured_z_test_target,
                               save_preds=args.save_preds,
                               ) 
 
