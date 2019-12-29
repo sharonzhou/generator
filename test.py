@@ -69,10 +69,11 @@ def test(args):
         logger.start_epoch()
        
         for z_test, z_test_target, mask in loader:
-            z_test = truncated_noise_sample(truncation=1.0, batch_size=1)
+            z_test = truncated_noise_sample(truncation=1.0, batch_size=batch_size)
             z_test = torch.from_numpy(z_test)
-            
-            class_vector = one_hot_from_int(1, batch_size=1)
+           
+            # 981 is baseball player
+            class_vector = one_hot_from_int(981, batch_size=batch_size)
             class_vector = torch.from_numpy(class_vector)
 
             logger.start_iter()
@@ -86,19 +87,20 @@ def test(args):
             masked_z_test_target = z_test_target * mask
             obscured_z_test_target = z_test_target * (1.0 - mask)
             
+            if args.use_intermediate_logits:
+                z_logits = model.forward(z_test).float()
+                z_probs = F.sigmoid(z_logits)
+                
+                # Debug logits and diffs
+                logger.debug_visualize([z_logits, z_logits * mask, z_logits * (1.0 - mask)],
+                                       unique_suffix='z-logits')
+            else:
+                #z_probs = model.forward(z_test).float()
+                z_probs = model.forward(z_test, class_vector, 1.0).float()
+
             # With backprop on only the input z, run one step of z-test and get z-loss
             z_optimizer = util.get_optimizer([z_test.requires_grad_()], args)
             with torch.set_grad_enabled(True):
-                if args.use_intermediate_logits:
-                    z_logits = model.forward(z_test).float()
-                    z_probs = F.sigmoid(z_logits)
-                    
-                    # Debug logits and diffs
-                    logger.debug_visualize([z_logits, z_logits * mask, z_logits * (1.0 - mask)],
-                                           unique_suffix='z-logits')
-                else:
-                    #z_probs = model.forward(z_test).float()
-                    z_probs = model.forward(z_test, class_vector, 1.0).float()
 
                 # Calculate the masked loss using z-test vector
                 masked_z_probs = z_probs * mask

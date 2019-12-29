@@ -1,2 +1,2 @@
 #!/bin/bash
-python test.py --name debug_z_test_only
+python test.py --name debug_z_test_only --batch_size 1
