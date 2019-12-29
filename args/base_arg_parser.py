@@ -18,8 +18,9 @@ class BaseArgParser(object):
                                  help='Name of run')
 
         # Model args
-        self.parser.add_argument('--model', type=str, choices=('DeepDecoderNet'), default='DeepDecoderNet',
-                                 help='Model to use. Basic conv1x1 from the Deep Decoder paper is currently the only model available')
+        self.parser.add_argument('--model', type=str, choices=('DeepDecoderNet', 'StyleGenerator', 'BigGAN128'), default='BigGAN128',
+                                 help=('Model to use. Basic conv1x1 from the Deep Decoder paper,'
+                                           + 'StyleGenerator from the StyleGAN paper, etc.'))
 
         self.parser.add_argument('--batch_size', type=int, default=2,
                                  help='Batch size.')
