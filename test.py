@@ -132,8 +132,8 @@ def test(args):
             # change don't need to save the model - same ckpt
             metrics = {'masked_loss': z_loss.item()}
             #saver.save(logger.global_step, model, optimizer, args.device, metric_val=metrics.get(args.best_ckpt_metric, None))        
+            
             # Log both train and eval model settings, and visualize their outputs
-            # TODO: change these inputs - maybe separate fcn
             logger.log_status(masked_probs=masked_z_probs,
                               masked_loss=z_loss,
                               masked_test_target=masked_z_test_target,
@@ -146,12 +146,11 @@ def test(args):
                               save_preds=args.save_preds,
                               ) 
 
-            logger.end_iter() 
+            logger.end_iter()
         
         logger.end_epoch()
     
     # Last log after everything completes
-    # TODO: adjust to the above
     logger.log_status(masked_probs=masked_z_probs,
                       masked_loss=z_loss,
                       masked_test_target=masked_z_test_target,

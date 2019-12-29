@@ -19,7 +19,7 @@ class TestLogger(BaseLogger):
         self.full_loss_meter = util.AverageMeter()
         self.obscured_loss_meter = util.AverageMeter()
         
-        self.pbar = tqdm(total=args.num_epochs)
+        self.pbar = tqdm(total = int(self.num_epochs / self.steps_per_print))
         self.train_start_time = time()
 
     def log_hparams(self, args):
@@ -58,7 +58,8 @@ class TestLogger(BaseLogger):
             
             message = f'[epoch: {self.epoch}, step: {self.global_step}, time: {int(hours):0>2}:{int(minutes):0>2}:{seconds:05.2f}, masked loss: {self.masked_loss_meter.avg:.3g}, full loss: {self.full_loss_meter.avg:.3g}, obscured_loss: {self.obscured_loss_meter.avg:.3g}]'
             self.pbar.set_description(message)
-            
+            self.pbar.update(1)
+
             # Write all errors as scalars to the graph
             self._log_scalars({'loss_masked': self.masked_loss_meter.avg}, print_to_stdout=False)
             self._log_scalars({'loss_full': self.full_loss_meter.avg}, print_to_stdout=False)
@@ -92,7 +93,6 @@ class TestLogger(BaseLogger):
             curves: Dictionary of curves. Items have format '{phase}_{curve}: value.
         """
         self.epoch += 1
-        self.pbar.update(1)
 
     def is_finished_training(self):
         """Return True if finished training, otherwise return False."""

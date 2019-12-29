@@ -10,7 +10,7 @@ class TestArgParser(BaseArgParser):
         self.is_training = False
 
         # Logging args
-        self.parser.add_argument('--steps_per_print', type=int, default=32,
+        self.parser.add_argument('--steps_per_print', type=int, default=2,
                                  help='Number of epochs between printing loss to the console and TensorBoard.')
         self.parser.add_argument('--steps_per_visual', type=int, default=32,
                                  help='Number of epochs between visualizing training examples.')
