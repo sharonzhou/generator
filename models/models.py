@@ -14,9 +14,11 @@ from torchvision import models
 
 from models.deep_decoder_net import DeepDecoderNet
 from models.stylegan import StyleGenerator
+from models.pretrained.BigGAN.biggan import BigGAN128
 
 # Make sure to add to this as you write models.
 model_dict = {
                 'deepdecodernet': DeepDecoderNet,
                 'stylegan': StyleGenerator,
+                'biggan': BigGAN128,
              }

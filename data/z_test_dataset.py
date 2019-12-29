@@ -17,6 +17,7 @@ class ZTestDataset(data.Dataset):
         self.target_csv_path = self.target_dir / 'filenames.csv' 
         self.target_df = self.load_df(self.target_csv_path)
         
+        self.mask_dir = Path(args.mask_dir)
         self.masks = self.get_mask_names(self.target_df)
 
         self.targets = self.get_image_names(self.target_df)
@@ -27,12 +28,12 @@ class ZTestDataset(data.Dataset):
         # For deep decoder net input, reshape vectors
         if args.model == 'DeepDecoderNet' and args.use_custom_input_noise:
             self.z_tests = torch.cat([util.get_deep_decoder_input_noise(self.target_shape)
-                                      for _ in range(self.num_z_test)],
+                                      for _ in range(self.num_targets)],
                                       dim=0)
         else:
-            self.z_tests = torch.cat([util.get_input_noise()
-                                      for _ in range(self.num_z_test)],
-                                      dim=0)
+            self.z_tests = torch.stack([util.get_input_noise()
+                                        for _ in range(self.num_targets)],
+                                        dim=0)
        
     def load_df(self, csv_path):
         return pd.read_csv(csv_path)
@@ -53,7 +54,7 @@ class ZTestDataset(data.Dataset):
 
         # Get z_test noise
         z_test = self.z_tests[index]
-
+        
         # Get target image
         target_name = self.targets[index]
         target = util.get_image(self.target_dir,
@@ -63,7 +64,7 @@ class ZTestDataset(data.Dataset):
         mask_name = self.masks[index]
         mask = util.get_image(self.mask_dir,
                               mask_name)
-
+        
         return z_test, target, mask
 
     def __len__(self):

@@ -122,7 +122,7 @@ class BaseLogger(object):
         Args:
             probs_batch: Probabilities outputted by the model, in minibatch.
             targets_batch: Target labels for the inputs, in minibatch.
-            phase: One of 'train', 'val', or 'test'.
+            phase: One of 'train', 'z-test' (during training), or 'test' (z-test eval alone).
             unique_suffix: A unique suffix to append to every image title. Allows
               for displaying all visualizations separately on TensorBoard.
         Returns:

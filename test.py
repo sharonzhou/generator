@@ -19,7 +19,7 @@ from copy import deepcopy
 import util
 import models
 from data import get_loader
-from args import TrainArgParser
+from args import TestArgParser
 from logger import TestLogger
 from saver import ModelSaver
 
@@ -31,10 +31,15 @@ def test(args):
     if args.ckpt_path and not args.use_pretrained:
         model, ckpt_info = ModelSaver.load_model(args.ckpt_path, args.gpu_ids)
     else:
+        from pytorch_pretrained_biggan import (BigGAN, one_hot_from_int, truncated_noise_sample,
+                                                       save_as_images, display_in_terminal)
+        model = BigGAN.from_pretrained('biggan-deep-512')
+        """
         model_fn = models.__dict__[args.model]
         model = model_fn(**vars(args))
         if args.use_pretrained:
             model.load_pretrained(args.ckpt_path)
+        """
         model = nn.DataParallel(model, args.gpu_ids)
     model = model.to(args.device)
     model.eval()
@@ -63,13 +68,20 @@ def test(args):
     while not logger.is_finished_training():
         logger.start_epoch()
        
-        for z_test, z_test_target, mask in loader: 
+        for z_test, z_test_target, mask in loader:
+            z_test = truncated_noise_sample(truncation=1.0, batch_size=1)
+            z_test = torch.from_numpy(z_test)
+            
+            class_vector = one_hot_from_int(1, batch_size=1)
+            class_vector = torch.from_numpy(class_vector)
+
             logger.start_iter()
            
             if torch.cuda.is_available():
                 mask = mask.cuda()
                 z_test = z_test.cuda()
                 z_test_target = z_test_target.cuda()
+                class_vector = class_vector.cuda()
             
             masked_z_test_target = z_test_target * mask
             obscured_z_test_target = z_test_target * (1.0 - mask)
@@ -79,13 +91,14 @@ def test(args):
             with torch.set_grad_enabled(True):
                 if args.use_intermediate_logits:
                     z_logits = model.forward(z_test).float()
-                    z_probs = F.sigmoid(z_logits) 
+                    z_probs = F.sigmoid(z_logits)
                     
                     # Debug logits and diffs
                     logger.debug_visualize([z_logits, z_logits * mask, z_logits * (1.0 - mask)],
                                            unique_suffix='z-logits')
                 else:
-                    z_probs = model.forward(z_test).float()
+                    #z_probs = model.forward(z_test).float()
+                    z_probs = model.forward(z_test, class_vector, 1.0).float()
 
                 # Calculate the masked loss using z-test vector
                 masked_z_probs = z_probs * mask
@@ -139,26 +152,21 @@ def test(args):
     
     # Last log after everything completes
     # TODO: adjust to the above
-    logger.log_status(inputs=input_noise,
-                      targets=target_image,
-                      probs=probs,
-                      masked_probs=masked_probs,
-                      masked_loss=masked_loss,
-                      probs_eval=probs_eval,
-                      masked_probs_eval=masked_probs_eval,
-                      obscured_probs_eval=obscured_probs_eval,
-                      masked_loss_eval=masked_loss_eval,
-                      obscured_loss_eval=obscured_loss_eval,
-                      full_loss_eval=full_loss_eval,
-                      z_target=z_test_target,
-                      z_probs=z_probs,
-                      z_loss=z_loss,
+    logger.log_status(masked_probs=masked_z_probs,
+                      masked_loss=z_loss,
+                      masked_test_target=masked_z_test_target,
+                      full_probs=z_probs,
+                      full_loss=full_z_loss,
+                      full_test_target=z_test_target,
+                      obscured_probs=obscured_z_probs,
+                      obscured_loss=obscured_z_loss,
+                      obscured_test_target=obscured_z_test_target,
                       save_preds=args.save_preds,
                       force_visualize=True,
-                      )
+                      ) 
 
 
 if __name__ == "__main__":
-    parser = TrainArgParser()
+    parser = TestArgParser()
     args_ = parser.parse_args()
-    train(args_)
+    test(args_)

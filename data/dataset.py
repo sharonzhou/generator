@@ -16,6 +16,7 @@ class Dataset(data.Dataset):
         self.target_csv_path = self.target_dir / 'filenames.csv' 
         self.target_df = self.load_df(self.target_csv_path)
         
+        self.mask_dir = Path(args.mask_dir)
         self.masks = self.get_mask_names(self.target_df)
 
         self.targets = self.get_image_names(self.target_df)
@@ -29,6 +30,7 @@ class Dataset(data.Dataset):
         
         self.z_test_targets = self.get_image_names(self.z_test_target_df)
         self.num_z_test = len(self.z_test_targets)
+        print(f'num z test is {self.num_z_test}')
 
         # Create input noise and z-test vecs
         # For deep decoder net input, reshape vectors
@@ -36,14 +38,14 @@ class Dataset(data.Dataset):
             self.input_noises = torch.cat([util.get_deep_decoder_input_noise(self.target_shape)
                                            for _ in range(self.num_targets)],
                                            dim=0)
-            self.z_tests = torch.cat([util.get_deep_decoder_input_noise(self.target_shape)
+            self.z_tests = torch.stack([util.get_deep_decoder_input_noise(self.target_shape)
                                       for _ in range(self.num_z_test)],
                                       dim=0)
         else:
             self.input_noises = torch.cat([util.get_input_noise()
                                            for _ in range(self.num_targets)],
                                            dim=0)
-            self.z_tests = torch.cat([util.get_input_noise()
+            self.z_tests = torch.stack([util.get_input_noise()
                                       for _ in range(self.num_z_test)],
                                       dim=0)
        

@@ -38,7 +38,7 @@ class TestLogger(BaseLogger):
                    save_preds=False, force_visualize=False):
         """Log results and status of z test."""
         
-        batch_size = inputs.size(0)
+        batch_size = full_probs.size(0)
         
         masked_loss = masked_loss.item()
         full_loss = full_loss.item()
@@ -56,7 +56,7 @@ class TestLogger(BaseLogger):
             hours, rem = divmod(duration, 3600)
             minutes, seconds = divmod(rem, 60)
             
-            message = f'[epoch: {self.epoch}, step: {self.global_step}, time: {int(hours):0>2}:{int(minutes):0>2}:{seconds:05.2f}, masked loss: {self.masked_loss_meter.avg:.3g}, full loss: {self.full_loss_eval_meter.avg:.3g}, obscured_loss: {self.obscured_loss_eval_meter.avg:.3g}]'
+            message = f'[epoch: {self.epoch}, step: {self.global_step}, time: {int(hours):0>2}:{int(minutes):0>2}:{seconds:05.2f}, masked loss: {self.masked_loss_meter.avg:.3g}, full loss: {self.full_loss_meter.avg:.3g}, obscured_loss: {self.obscured_loss_meter.avg:.3g}]'
             self.pbar.set_description(message)
             
             # Write all errors as scalars to the graph
@@ -66,19 +66,19 @@ class TestLogger(BaseLogger):
 
         # Periodically visualize up to num_visuals training examples from the batch
         if self.global_step % self.steps_per_visual == 0 or force_visualize:
-            # Does not make sense to show masked or obscured probs... since not image size anymore
-            self.visualize(probs, targets, obscured_probs, phase='train')
+            
+            self.visualize(full_probs, full_test_target, obscured_probs, phase='test')
 
             if save_preds:
-                probs_image_name = f'prediction-{self.global_step}.png'
+                probs_image_name = f'z-test-pred-{self.global_step}.png'
                 probs_image_path = os.path.join(self.log_dir, probs_image_name)
                 
-                probs = probs.detach().to('cpu')
-                probs = probs.numpy().copy()
-                probs_np = util.convert_image_from_tensor(probs)
+                full_probs = full_probs.detach().to('cpu')
+                full_probs = full_probs.numpy().copy()
+                full_probs_np = util.convert_image_from_tensor(full_probs)
 
-                probs_pil = Image.fromarray(probs_np)
-                probs_pil.save(probs_image_path)
+                full_probs_pil = Image.fromarray(full_probs_np)
+                full_probs_pil.save(probs_image_path)
 
     def start_epoch(self):
         """Log info for start of an epoch."""
