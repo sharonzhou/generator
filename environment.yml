@@ -1,0 +1,7 @@
+name: generator
+channels:
+  - soumith
+  - conda-forge
+  - defaults
+prefix: /sailhome/sharonz/miniconda3/envs/generator
+
