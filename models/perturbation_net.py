@@ -24,7 +24,7 @@ class PerturbationNet(BaseNet):
         # Determine the sizes of each of them
         # Initialize self.perturb1-5 layers
 
-        self.model0a = nn.Sequential(*list(inner_model.generator.layers[:-1])
+        self.model0a = nn.Sequential(*list(inner_model.generator.layers[:-1]))
         self.model0b = nn.Sequential(*[inner_model.generator.layers._modules['14'].bn_0, 
                                       inner_model.generator.layers._modules['14'].conv_0,
                                       ])
@@ -66,21 +66,22 @@ class PerturbationNet(BaseNet):
 
         out = self.model0a(cond_vector, truncation)
         out = self.model0b(out)
-        out = self.perturb0(out)
+        #out = self.perturb0(out)
         
         out = self.model1(out, truncation, cond_vector)
-        out = self.perturb1(out)
+        #out = self.perturb1(out)
         
         out = self.model2(out, truncation, cond_vector)
-        out = self.perturb2(out)
+        #out = self.perturb2(out)
         
         out = self.model3(out, truncation, cond_vector)
-        out = self.perturb3(out)
+        #out = self.perturb3(out)
         
         out = self.model4a(out)
         out = self.model4b(out)
-        out = self.perturb4(out)
+        #out = self.perturb4(out)
         
+        out = out[:, :3, ...]
         out = self.model5(out)
 
         return out

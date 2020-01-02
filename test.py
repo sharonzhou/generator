@@ -100,8 +100,9 @@ def test(args):
     
     # Get class conditional label
     # 981 is baseball player
+    # 207 is golden retriever
     # TODO: Conditional generation only
-    class_vector = one_hot_from_int(981, batch_size=batch_size)
+    class_vector = one_hot_from_int(207, batch_size=batch_size)
     class_vector = torch.from_numpy(class_vector)
 
     while not logger.is_finished_training():
@@ -136,7 +137,6 @@ def test(args):
 
                 pixel_loss = torch.zeros(1, requires_grad=True).to(args.device)
                 pixel_loss = pixel_criterion(masked_z_probs, masked_z_test_target)
-                print(f'pixel loss {pixel_loss}')
 
                 if 'perceptual' in args.loss_fn:
                     z_probs_features = vgg_feature_extractor(masked_z_probs)
@@ -144,10 +144,8 @@ def test(args):
                     
                     perceptual_loss = torch.zeros(1, requires_grad=True).to(args.device)
                     perceptual_loss = perceptual_criterion(z_probs_features, z_test_features)
-                    print(f'perceptual loss {perceptual_loss}')
 
                     z_loss = pixel_loss + perceptual_loss_weight * perceptual_loss
-                    print(f'total loss {z_loss}')
                 elif 'perturbation' in args.loss_fn:
                     # TODO: create perturbation network R - make it copy G fine layer shapes - need it to do forward pass during model.forward
                     # so first do model.forward of the usual model G on the high level layers, then replace with R? or interchange layers btw G and R and wrap the full model in a larger thing - where the G layers are frozen, but the R layers are not - I wonder if there's an easier way to do this so it's easy to retrofit any G - maybe if R copies all of G_finelayers, freezes itself on those params, then creates its own around each that's not frozen, that could work and the second forward pass is just R
