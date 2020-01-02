@@ -60,7 +60,7 @@ def test(args):
     
     # Loss functions
     if 'mse' in args.loss_fn:
-        pixel_criterion = torch.nn.MSELoss(reduction='none').to(args.device)
+        pixel_criterion = torch.nn.MSELoss().to(args.device)
     else:
         pixel_criterion = torch.nn.L1Loss().to(args.device)
 
@@ -163,16 +163,37 @@ def test(args):
             # Compute the full loss (without mask) and obscured loss (loss only on masked region)
             # For logging and final evaluation (obscured loss is final MSE), so not in backprop loop
             full_z_loss = torch.zeros(1)
+            full_pixel_loss = torch.zeros(1)
+            full_pixel_loss = pixel_criterion(z_probs, z_test_target) #.mean()
             
             obscured_z_probs = z_probs * (1.0 - mask) 
             obscured_z_loss = torch.zeros(1)
-            """
-            # TODO: change these to the appropriate losses
-            full_z_loss = z_loss_fn(z_probs, z_test_target).mean()
+            obscured_pixel_loss = torch.zeros(1)
+            obscured_pixel_loss = pixel_criterion(obscured_z_probs, obscured_z_test_target) #.mean()
             
-            obscured_z_loss = z_loss_fn(obscured_z_probs, obscured_z_test_target).mean()
-            """
+            if 'perceptual' in args.loss_fn: 
+                # Full loss
+                z_probs_full_features = vgg_feature_extractor(z_probs).detach()
+                z_test_full_features = vgg_feature_extractor(z_test_target).detach()
+                    
+                full_perceptual_loss = torch.zeros(1)
+                full_perceptual_loss = perceptual_criterion(z_probs_full_features, z_test_full_features)
 
+                full_z_loss = full_pixel_loss + perceptual_loss_weight * full_perceptual_loss
+
+                # Obscured loss
+                z_probs_obscured_features = vgg_feature_extractor(z_probs).detach()
+                z_test_obscured_features = vgg_feature_extractor(z_test_target).detach()
+                    
+                obscured_perceptual_loss = torch.zeros(1)
+                obscured_perceptual_loss = perceptual_criterion(z_probs_obscured_features, z_test_obscured_features)
+
+                obscured_z_loss = obscured_pixel_loss + perceptual_loss_weight * obscured_perceptual_loss
+            elif 'pertubation' in args.loss_fn:
+                reg_loss = reg_criterion() # TODO
+                z_loss = pixel_loss + reg_loss_weight * reg_loss
+            else:
+                full_z_loss = full_pixel_loss
             
             """# TODO: z_loss is not always MSE anymore - figure out desired metric
             if z_loss < max_z_test_loss:
