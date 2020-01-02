@@ -1,3 +1,6 @@
+import os
+
+from PIL import Image
 from time import time
 from tqdm import tqdm
 
@@ -61,8 +64,8 @@ class TestLogger(BaseLogger):
             self.pbar.update(1)
 
             # Write all errors as scalars to the graph
-            self._log_scalars({'loss_masked': self.masked_loss_meter.avg}, print_to_stdout=False)
-            self._log_scalars({'loss_full': self.full_loss_meter.avg}, print_to_stdout=False)
+            self._log_scalars({'loss': self.masked_loss_meter.avg}, print_to_stdout=False)
+            self._log_scalars({'loss_all': self.full_loss_meter.avg}, print_to_stdout=False)
             self._log_scalars({'loss_obscured': self.obscured_loss_meter.avg}, print_to_stdout=False)
 
         # Periodically visualize up to num_visuals training examples from the batch
@@ -77,7 +80,7 @@ class TestLogger(BaseLogger):
                 full_probs = full_probs.detach().to('cpu')
                 full_probs = full_probs.numpy().copy()
                 full_probs_np = util.convert_image_from_tensor(full_probs)
-
+                
                 full_probs_pil = Image.fromarray(full_probs_np)
                 full_probs_pil.save(probs_image_path)
 

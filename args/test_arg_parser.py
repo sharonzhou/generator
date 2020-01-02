@@ -48,7 +48,9 @@ class TestArgParser(BaseArgParser):
                                  help='Number of epochs to evaluate z test. If 0, evaluate forever / until convergence.')
 
         # Loss args
-        self.parser.add_argument('--loss_fn', type=str, default='mse', choices=('mse', 'cross_entropy'),
+        self.parser.add_argument('--perceptual_loss_weight', type=float, default=10, help='Perceptual loss weight (vs. pixel loss)')
+        self.parser.add_argument('--reg_loss_weight', type=float, default=0.1, help='Perturbation regularization loss weight (vs. pixel loss)')
+        self.parser.add_argument('--loss_fn', type=str, default='perceptual', choices=('pixel-mse', 'pixel-l1', 'perceptual', 'perturbation'),
                                  help='Loss function to use.')
         
         # Model args
@@ -62,8 +64,6 @@ class TestArgParser(BaseArgParser):
                                  help='Number of epochs between running z-test in the main training loop.')
         self.parser.add_argument('--max_z_test_epochs', type=int, default=1000,
                                  help='Stop criteria: max number of epochs to run z-test for during the z-test training loop.')
-        self.parser.add_argument('--max_z_test_loss', type=float, default=0.00001,
-                help='Convergence criteria: z loss at which we start saving masked/obscured values in the outer/main training loop.')
         self.parser.add_argument('--steps_per_z_test_print', type=int, default=5,
                                  help='Number of epochs between running z-test print during the z-test training loop.')
         self.parser.add_argument('--steps_per_z_test_visual', type=int, default=5,

@@ -23,41 +23,66 @@ from args import TestArgParser
 from logger import TestLogger
 from saver import ModelSaver
 
+from pytorch_pretrained_biggan import one_hot_from_int, truncated_noise_sample
+
 def test(args):
     # Get loader for z-test
     loader = get_loader(args, phase='test')
 
-    # Load pretrained model ckpt by path or torchvision pretrained
+    # TODO: make into function that takes in args.model and returns the pretrained model
+    #       and also consider whether it's class conditional and what kind of class conditional (how many classes) -> probably just imagenet now, actually maybe cifar-10 too
+    #       and also consider add truncation sampling as option too - this should return model, z_test noise vec, and class_vec (optionally)
     if args.ckpt_path and not args.use_pretrained:
         model, ckpt_info = ModelSaver.load_model(args.ckpt_path, args.gpu_ids)
     else:
-        from pytorch_pretrained_biggan import (BigGAN, one_hot_from_int, truncated_noise_sample,
-                                                       save_as_images, display_in_terminal)
-        model = BigGAN.from_pretrained('biggan-deep-512')
-        """
-        model_fn = models.__dict__[args.model]
-        model = model_fn(**vars(args))
-        if args.use_pretrained:
-            model.load_pretrained(args.ckpt_path)
-        """
-        model = nn.DataParallel(model, args.gpu_ids)
+        if 'BigGAN' in args.model:
+            from pytorch_pretrained_biggan import BigGAN
+            num_params = int(''.join(filter(str.isdigit, args.model)))
+            model = BigGAN.from_pretrained(f'biggan-deep-{num_params}')
+    
+    # Freeze model instead of using .eval()
+    for param in model.parameters():
+        param.requires_grad = False
+        
+    # TODO: if perturbation net R, then create wrapper around this?
+    if 'perturbation' in args.loss_fn:
+        model = models.PerturbationNet(model)
+        print(f'after {model}')
+        import pdb;pdb.set_trace()
+    
+    model = nn.DataParallel(model, args.gpu_ids)
     model = model.to(args.device)
-    model.eval()
-
+        
     # Print model parameters
-    print('Model parameters: name, size, mean, std')
-    for name, param in model.named_parameters():
-        print(name, param.size(), torch.mean(param), torch.std(param))
+    #print('Model parameters: name, size, mean, std')
+    #for name, param in model.named_parameters():
+        #print(name, param.size(), torch.mean(param), torch.std(param))
+    
+    # Loss functions
+    if 'mse' in args.loss_fn:
+        pixel_criterion = torch.nn.MSELoss(reduction='none').to(args.device)
+    else:
+        pixel_criterion = torch.nn.L1Loss().to(args.device)
 
-    # Get optimizer and loss
-    parameters = model.parameters()
-    optimizer = util.get_optimizer(parameters, args)
-  
-    z_loss_fn = util.get_loss_fn(args.loss_fn, args)
+    if 'perceptual' in args.loss_fn:
+        # Combination pixel-perceptual loss - Sec 3.2. By default, uses pixel L1.
+        perceptual_criterion = torch.nn.L1Loss().to(args.device)
+        perceptual_loss_weight = args.perceptual_loss_weight
+
+        vgg_feature_extractor = models.VGGFeatureExtractor().to(args.device)
+        vgg_feature_extractor.eval()
+    elif 'perturbation' in args.loss_fn:
+        # Perturbation network R. By default, uses pixel L1.
+        # Sec 3.3: http://ganpaint.io/Bau_et_al_Semantic_Photo_Manipulation_preprint.pdf
+        reg_criterion = torch.nn.MSELoss().to(args.device)
+        reg_loss_weight = args.reg_loss_weight
+
+    # z_loss_fn = util.get_loss_fn(args.loss_fn, args)
+    max_z_test_loss = 100. # TODO: actually put max value possible here
 
     # Get logger, saver 
     logger = TestLogger(args)
-    saver = ModelSaver(args)
+    # saver = ModelSaver(args) TODO: saver for perturbation network R
     
     print(f'Logs: {logger.log_dir}')
     print(f'Ckpts: {args.save_dir}')
@@ -65,17 +90,24 @@ def test(args):
     # Run z-test in batches
     logger.log_hparams(args)
     batch_size = args.batch_size
+    
+    # Get noise vector
+    # TODO: add truncation to args
+    # truncation = args.truncation if args.truncation else 1.0
+    truncation = 1.0
+    z_test = truncated_noise_sample(truncation=truncation, batch_size=batch_size)
+    z_test = torch.from_numpy(z_test)
+    
+    # Get class conditional label
+    # 981 is baseball player
+    # TODO: Conditional generation only
+    class_vector = one_hot_from_int(981, batch_size=batch_size)
+    class_vector = torch.from_numpy(class_vector)
+
     while not logger.is_finished_training():
         logger.start_epoch()
-       
-        for z_test, z_test_target, mask in loader:
-            z_test = truncated_noise_sample(truncation=1.0, batch_size=batch_size)
-            z_test = torch.from_numpy(z_test)
-           
-            # 981 is baseball player
-            class_vector = one_hot_from_int(981, batch_size=batch_size)
-            class_vector = torch.from_numpy(class_vector)
-
+         
+        for _, z_test_target, mask in loader:
             logger.start_iter()
            
             if torch.cuda.is_available():
@@ -87,25 +119,43 @@ def test(args):
             masked_z_test_target = z_test_target * mask
             obscured_z_test_target = z_test_target * (1.0 - mask)
             
-            if args.use_intermediate_logits:
-                z_logits = model.forward(z_test).float()
-                z_probs = F.sigmoid(z_logits)
-                
-                # Debug logits and diffs
-                logger.debug_visualize([z_logits, z_logits * mask, z_logits * (1.0 - mask)],
-                                       unique_suffix='z-logits')
-            else:
-                #z_probs = model.forward(z_test).float()
-                z_probs = model.forward(z_test, class_vector, 1.0).float()
-
             # With backprop on only the input z, run one step of z-test and get z-loss
             z_optimizer = util.get_optimizer([z_test.requires_grad_()], args)
+
             with torch.set_grad_enabled(True):
 
+                if class_vector is not None:
+                    z_probs = model.forward(z_test, class_vector, truncation).float()
+                    z_probs = (z_probs + 1) / 2.
+                else:
+                    z_probs = model.forward(z_test).float()
+                    
                 # Calculate the masked loss using z-test vector
                 masked_z_probs = z_probs * mask
                 z_loss = torch.zeros(1, requires_grad=True).to(args.device)
-                z_loss = z_loss_fn(masked_z_probs, masked_z_test_target).mean()
+
+                pixel_loss = torch.zeros(1, requires_grad=True).to(args.device)
+                pixel_loss = pixel_criterion(masked_z_probs, masked_z_test_target)
+                print(f'pixel loss {pixel_loss}')
+
+                if 'perceptual' in args.loss_fn:
+                    z_probs_features = vgg_feature_extractor(masked_z_probs)
+                    z_test_features = vgg_feature_extractor(masked_z_test_target).detach()
+                    
+                    perceptual_loss = torch.zeros(1, requires_grad=True).to(args.device)
+                    perceptual_loss = perceptual_criterion(z_probs_features, z_test_features)
+                    print(f'perceptual loss {perceptual_loss}')
+
+                    z_loss = pixel_loss + perceptual_loss_weight * perceptual_loss
+                    print(f'total loss {z_loss}')
+                elif 'perturbation' in args.loss_fn:
+                    # TODO: create perturbation network R - make it copy G fine layer shapes - need it to do forward pass during model.forward
+                    # so first do model.forward of the usual model G on the high level layers, then replace with R? or interchange layers btw G and R and wrap the full model in a larger thing - where the G layers are frozen, but the R layers are not - I wonder if there's an easier way to do this so it's easy to retrofit any G - maybe if R copies all of G_finelayers, freezes itself on those params, then creates its own around each that's not frozen, that could work and the second forward pass is just R
+                    reg_loss = reg_criterion() # TODO
+
+                    z_loss = pixel_loss + reg_loss_weight * reg_loss
+                else:
+                    z_loss = pixel_loss
                 
                 # Backprop on z-test vector
                 z_loss.backward()
@@ -115,25 +165,25 @@ def test(args):
             # Compute the full loss (without mask) and obscured loss (loss only on masked region)
             # For logging and final evaluation (obscured loss is final MSE), so not in backprop loop
             full_z_loss = torch.zeros(1)
-            full_z_loss = z_loss_fn(z_probs, z_test_target).mean()
             
             obscured_z_probs = z_probs * (1.0 - mask) 
             obscured_z_loss = torch.zeros(1)
-            obscured_z_loss = z_loss_fn(obscured_z_probs, obscured_z_test_target).mean()
+            """
+            # TODO: change these to the appropriate losses
+            full_z_loss = z_loss_fn(z_probs, z_test_target).mean()
             
-            # Once the unmasked region starts to overfit, get score from obscured region
-            if z_loss < args.max_z_test_loss: # TODO later: include this part into the metrics/saver stuff below
-                # Save MSE on obscured region
+            obscured_z_loss = z_loss_fn(obscured_z_probs, obscured_z_test_target).mean()
+            """
+
+            
+            """# TODO: z_loss is not always MSE anymore - figure out desired metric
+            if z_loss < max_z_test_loss:
+                # Save MSE on obscured region # TODO: z_loss is not always MSE anymore - figure out desired metric
                 final_metrics = {'z-loss': z_loss.item(), 'obscured-z-loss': obscured_z_loss.item()}
                 logger._log_scalars(final_metrics)
-                print('z loss', z_loss) 
-                print('Final MSE value', obscured_z_loss)
-
-            # TODO later: Make a function for metrics - or at least make sure dict includes all possible best ckpt metrics
-            # TODO: figure out criteria for saving - and technically just saving z-test value for each image? Model doesn't 
-            # change don't need to save the model - same ckpt
-            metrics = {'masked_loss': z_loss.item()}
-            #saver.save(logger.global_step, model, optimizer, args.device, metric_val=metrics.get(args.best_ckpt_metric, None))        
+                print('Recall (z loss - non obscured loss - if MSE)', z_loss) 
+                print('Precision (MSE value on masked region)', obscured_z_loss)
+            """
             
             # Log both train and eval model settings, and visualize their outputs
             logger.log_status(masked_probs=masked_z_probs,
