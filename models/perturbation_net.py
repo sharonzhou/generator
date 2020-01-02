@@ -23,6 +23,7 @@ class PerturbationNet(BaseNet):
         # Find the 5 areas to stop and include perturbed layer
         # Determine the sizes of each of them
         # Initialize self.perturb1-5 layers
+        self.embeddings = inner_model.embeddings
 
         self.model0a = nn.Sequential(*list(inner_model.generator.layers[:-1]))
         self.model0b = nn.Sequential(*[inner_model.generator.layers._modules['14'].bn_0, 
@@ -63,6 +64,8 @@ class PerturbationNet(BaseNet):
         
         embed = self.embeddings(class_label)
         cond_vector = torch.cat((z, embed), dim=1)
+        
+        import pdb;pdb.set_trace()
 
         out = self.model0a(cond_vector, truncation)
         out = self.model0b(out)
@@ -78,7 +81,7 @@ class PerturbationNet(BaseNet):
         #out = self.perturb3(out)
         
         out = self.model4a(out)
-        out = self.model4b(out)
+        out = self.model4b(out, truncation)
         #out = self.perturb4(out)
         
         out = out[:, :3, ...]

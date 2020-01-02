@@ -47,8 +47,9 @@ def test(args):
     # TODO: if perturbation net R, then create wrapper around this?
     if 'perturbation' in args.loss_fn:
         model = models.PerturbationNet(model)
-        print(f'after {model}')
-        import pdb;pdb.set_trace()
+    
+    # TESTING - remove
+    model = models.PerturbationNet(model)
     
     model = nn.DataParallel(model, args.gpu_ids)
     model = model.to(args.device)
