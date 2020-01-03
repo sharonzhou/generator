@@ -36,26 +36,30 @@ def test(args):
         model, ckpt_info = ModelSaver.load_model(args.ckpt_path, args.gpu_ids)
     else:
         if 'BigGAN' in args.model:
-            from pytorch_pretrained_biggan import BigGAN
             num_params = int(''.join(filter(str.isdigit, args.model)))
-            model = models.BigGANPerturbationNet.from_pretrained(f'biggan-deep-{num_params}')
-            #model = BigGAN.from_pretrained(f'biggan-deep-{num_params}')
                 
-            # TODO: if perturbation net R, then create wrapper around this?
             if 'perturbation' in args.loss_fn:
-                model = models.PerturbationNet(model)
+                # Use custom BigGAN with Perturbation Net wrapper
+                model = models.BigGANPerturbationNet.from_pretrained(f'biggan-deep-{num_params}')
+            else:
+                # Use pretrained BigGAN from package
+                from pytorch_pretrained_biggan import BigGAN
+                model = BigGAN.from_pretrained(f'biggan-deep-{num_params}')
     
     # Freeze model instead of using .eval()
     for param in model.parameters():
         param.requires_grad = False
+
+    # If using perturbation net, learn perturbation layers
+    if 'perturbation' in args.loss_fn:
+        trainable_params = []
+        for name, param in model.named_parameters():
+            if 'perturb' in name:
+                param.requires_grad = True
+                trainable_params.append(param)
     
     model = nn.DataParallel(model, args.gpu_ids)
     model = model.to(args.device)
-        
-    # Print model parameters
-    #print('Model parameters: name, size, mean, std')
-    #for name, param in model.named_parameters():
-        #print(name, param.size(), torch.mean(param), torch.std(param))
     
     # Loss functions
     if 'mse' in args.loss_fn:
@@ -119,8 +123,12 @@ def test(args):
             masked_z_test_target = z_test_target * mask
             obscured_z_test_target = z_test_target * (1.0 - mask)
             
-            # With backprop on only the input z, run one step of z-test and get z-loss
-            z_optimizer = util.get_optimizer([z_test.requires_grad_()], args)
+            if 'perturbation' in args.loss_fn:
+                # With backprop on only trainable parameters in perturbation net
+                z_optimizer = util.get_optimizer(trainable_params, args)
+            else:
+                # With backprop on only the input z, run one step of z-test and get z-loss
+                z_optimizer = util.get_optimizer([z_test.requires_grad_()], args)
 
             with torch.set_grad_enabled(True):
 

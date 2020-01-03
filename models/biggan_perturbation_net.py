@@ -146,30 +146,29 @@ class BigGANBatchNorm(nn.Module):
         return out
 
 
-class GenBlock(nn.Module):
+class GenBlockPerturbed(nn.Module):
     def __init__(self, in_size, out_size, condition_vector_dim, reduction_factor=4, up_sample=False,
-                 n_stats=51, eps=1e-12, is_perturbed=False):
-        super(GenBlock, self).__init__()
+                 n_stats=51, eps=1e-12):
+        super(GenBlockPerturbed, self).__init__()
         self.up_sample = up_sample
         self.drop_channels = (in_size != out_size)
         middle_size = in_size // reduction_factor
-        self.is_perturbed = is_perturbed
 
         self.bn_0 = BigGANBatchNorm(in_size, condition_vector_dim, n_stats=n_stats, eps=eps, conditional=True)
         self.conv_0 = snconv2d(in_channels=in_size, out_channels=middle_size, kernel_size=1, eps=eps)
-        self.perturb_0 = nn.Linear(middle_size, middle_size)
+        self.perturb_0 = nn.Linear(256, 256, bias=False)
 
         self.bn_1 = BigGANBatchNorm(middle_size, condition_vector_dim, n_stats=n_stats, eps=eps, conditional=True)
         self.conv_1 = snconv2d(in_channels=middle_size, out_channels=middle_size, kernel_size=3, padding=1, eps=eps)
-        self.perturb_1 = nn.Linear(middle_size, middle_size)
+        self.perturb_1 = nn.Linear(512, 512, bias=False)
 
         self.bn_2 = BigGANBatchNorm(middle_size, condition_vector_dim, n_stats=n_stats, eps=eps, conditional=True)
         self.conv_2 = snconv2d(in_channels=middle_size, out_channels=middle_size, kernel_size=3, padding=1, eps=eps)
-        self.perturb_2 = nn.Linear(middle_size, middle_size)
+        self.perturb_2 = nn.Linear(512, 512, bias=False)
 
         self.bn_3 = BigGANBatchNorm(middle_size, condition_vector_dim, n_stats=n_stats, eps=eps, conditional=True)
         self.conv_3 = snconv2d(in_channels=middle_size, out_channels=out_size, kernel_size=1, eps=eps)
-        self.perturb_3 = nn.Linear(out_size, out_size)
+        self.perturb_3 = nn.Linear(512, 512, bias=False)
 
         self.relu = nn.ReLU()
 
@@ -179,28 +178,76 @@ class GenBlock(nn.Module):
         x = self.bn_0(x, truncation, cond_vector)
         x = self.relu(x)
         x = self.conv_0(x)
-        if self.is_perturbed:
-            x = self.perturb_0(x)
+        x = self.perturb_0(x)
 
         x = self.bn_1(x, truncation, cond_vector)
         x = self.relu(x)
         if self.up_sample:
             x = F.interpolate(x, scale_factor=2, mode='nearest')
         x = self.conv_1(x)
-        if self.is_perturbed:
-            x = self.perturb_1(x)
+        x = self.perturb_1(x)
 
         x = self.bn_2(x, truncation, cond_vector)
         x = self.relu(x)
         x = self.conv_2(x)
-        if self.is_perturbed:
-            x = self.perturb_2(x)
+        x = self.perturb_2(x)
 
         x = self.bn_3(x, truncation, cond_vector)
         x = self.relu(x)
         x = self.conv_3(x)
-        if self.is_perturbed:
-            x = self.perturb_3(x)
+        x = self.perturb_3(x)
+
+        if self.drop_channels:
+            new_channels = x0.shape[1] // 2
+            x0 = x0[:, :new_channels, ...]
+        if self.up_sample:
+            x0 = F.interpolate(x0, scale_factor=2, mode='nearest')
+
+        out = x + x0
+        return out
+
+class GenBlock(nn.Module):
+    def __init__(self, in_size, out_size, condition_vector_dim, reduction_factor=4, up_sample=False,
+                 n_stats=51, eps=1e-12):
+        super(GenBlock, self).__init__()
+        self.up_sample = up_sample
+        self.drop_channels = (in_size != out_size)
+        middle_size = in_size // reduction_factor
+
+        self.bn_0 = BigGANBatchNorm(in_size, condition_vector_dim, n_stats=n_stats, eps=eps, conditional=True)
+        self.conv_0 = snconv2d(in_channels=in_size, out_channels=middle_size, kernel_size=1, eps=eps)
+
+        self.bn_1 = BigGANBatchNorm(middle_size, condition_vector_dim, n_stats=n_stats, eps=eps, conditional=True)
+        self.conv_1 = snconv2d(in_channels=middle_size, out_channels=middle_size, kernel_size=3, padding=1, eps=eps)
+
+        self.bn_2 = BigGANBatchNorm(middle_size, condition_vector_dim, n_stats=n_stats, eps=eps, conditional=True)
+        self.conv_2 = snconv2d(in_channels=middle_size, out_channels=middle_size, kernel_size=3, padding=1, eps=eps)
+
+        self.bn_3 = BigGANBatchNorm(middle_size, condition_vector_dim, n_stats=n_stats, eps=eps, conditional=True)
+        self.conv_3 = snconv2d(in_channels=middle_size, out_channels=out_size, kernel_size=1, eps=eps)
+
+        self.relu = nn.ReLU()
+
+    def forward(self, x, cond_vector, truncation):
+        x0 = x
+
+        x = self.bn_0(x, truncation, cond_vector)
+        x = self.relu(x)
+        x = self.conv_0(x)
+
+        x = self.bn_1(x, truncation, cond_vector)
+        x = self.relu(x)
+        if self.up_sample:
+            x = F.interpolate(x, scale_factor=2, mode='nearest')
+        x = self.conv_1(x)
+
+        x = self.bn_2(x, truncation, cond_vector)
+        x = self.relu(x)
+        x = self.conv_2(x)
+
+        x = self.bn_3(x, truncation, cond_vector)
+        x = self.relu(x)
+        x = self.conv_3(x)
 
         if self.drop_channels:
             new_channels = x0.shape[1] // 2
@@ -222,21 +269,31 @@ class Generator(nn.Module):
                               out_features=4 * 4 * 16 * ch, eps=config.eps)
 
         layers = []
+        num_layers = len(config.layers)
         for i, layer in enumerate(config.layers):
             if i == config.attention_layer_position:
                 layers.append(SelfAttn(ch*layer[1], eps=config.eps))
-            layers.append(GenBlock(ch*layer[1],
-                                   ch*layer[2],
-                                   condition_vector_dim,
-                                   up_sample=layer[0],
-                                   n_stats=config.n_stats,
-                                   eps=config.eps))
+            if i < num_layers - 1:
+                layers.append(GenBlock(ch*layer[1],
+                                       ch*layer[2],
+                                       condition_vector_dim,
+                                       up_sample=layer[0],
+                                       n_stats=config.n_stats,
+                                       eps=config.eps))
+            else:
+                layers.append(GenBlockPerturbed(ch*layer[1],
+                                                ch*layer[2],
+                                                condition_vector_dim,
+                                                up_sample=layer[0],
+                                                n_stats=config.n_stats,
+                                                eps=config.eps))
+
         self.layers = nn.ModuleList(layers)
 
         self.bn = BigGANBatchNorm(ch, n_stats=config.n_stats, eps=config.eps, conditional=False)
         self.relu = nn.ReLU()
         self.conv_to_rgb = snconv2d(in_channels=ch, out_channels=ch, kernel_size=3, padding=1, eps=config.eps)
-        self.perturb_4 = nn.Linear(ch, ch)
+        self.perturb_4 = nn.Linear(512, 512, bias=False)
         self.tanh = nn.Tanh()
 
     def forward(self, cond_vector, truncation):
@@ -248,15 +305,9 @@ class Generator(nn.Module):
         z = z.view(-1, 4, 4, 16 * self.config.channel_width)
         z = z.permute(0, 3, 1, 2).contiguous()
 
-        num_layers = len(self.layers)
         for i, layer in enumerate(self.layers):
-            if i == num_layers - 1:
-                is_perturbed = True
-            else:
-                is_perturbed = False
-
-            if isinstance(layer, GenBlock):
-                z = layer(z, cond_vector, truncation, is_perturbed=is_perturbed)
+            if isinstance(layer, GenBlock) or isinstance(layer, GenBlockPerturbed):
+                z = layer(z, cond_vector, truncation)
             else:
                 z = layer(z)
 
@@ -301,13 +352,9 @@ class BigGANPerturbationNet(nn.Module):
         # cls is BigGAN class here - might want to alter that class or create a new perturbation class
         model = cls(config, *inputs, **kwargs)
         state_dict = torch.load(resolved_model_file, map_location='cpu' if not torch.cuda.is_available() else None)
-        
-        import copy
-        model_old = copy.deepcopy(model)
+      
+        # strict=False here enables copying of all matching keys and ignoring all else
         model.load_state_dict(state_dict, strict=False)
-        import pdb;pdb.set_trace()
-
-        # TODO: copy state dict only for params in model b/c will be adding new things
         return model
 
     def __init__(self, config):
