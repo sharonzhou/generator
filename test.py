@@ -49,7 +49,7 @@ def test(args):
         model = models.PerturbationNet(model)
     
     # TESTING - remove
-    model = models.PerturbationNet(model)
+    #model = models.PerturbationNet(model)
     
     model = nn.DataParallel(model, args.gpu_ids)
     model = model.to(args.device)
