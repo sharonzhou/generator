@@ -38,18 +38,16 @@ def test(args):
         if 'BigGAN' in args.model:
             from pytorch_pretrained_biggan import BigGAN
             num_params = int(''.join(filter(str.isdigit, args.model)))
-            model = BigGAN.from_pretrained(f'biggan-deep-{num_params}')
+            model = models.BigGANPerturbationNet.from_pretrained(f'biggan-deep-{num_params}')
+            #model = BigGAN.from_pretrained(f'biggan-deep-{num_params}')
+                
+            # TODO: if perturbation net R, then create wrapper around this?
+            if 'perturbation' in args.loss_fn:
+                model = models.PerturbationNet(model)
     
     # Freeze model instead of using .eval()
     for param in model.parameters():
         param.requires_grad = False
-        
-    # TODO: if perturbation net R, then create wrapper around this?
-    if 'perturbation' in args.loss_fn:
-        model = models.PerturbationNet(model)
-    
-    # TESTING - remove
-    #model = models.PerturbationNet(model)
     
     model = nn.DataParallel(model, args.gpu_ids)
     model = model.to(args.device)
