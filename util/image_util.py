@@ -74,7 +74,10 @@ def _make_rgb(image):
 
 def normalize_to_image(img):
     """Normalizes img to be in the range 0-255."""
-    img *= 255.
+    if img.min() >= 0 and img.max() <= 1:
+        img *= 255.
+    else:
+        img = np.clip(((img + 1) / 2.0) * 256, 0, 255)
     return img
 
 def convert_image_from_tensor(image):
@@ -102,7 +105,10 @@ def convert_image_from_tensor(image):
     image = normalize_to_image(image)
 
     # Convert to floats
-    image = image.astype(float)
+    # image = image.astype(float)
+    
+    # Convert to ints
+    image = image.astype(np.uint8)
 
     return image
 

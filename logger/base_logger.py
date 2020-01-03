@@ -158,7 +158,12 @@ class BaseLogger(object):
                 os.makedirs(log_dir_z_test, exist_ok=True)
                 visuals_image_path = os.path.join(log_dir_z_test, visuals_image_name)
             else:
-                abs_diff = np.abs(targets_np - probs_np)
+                #abs_diff = np.abs(targets_np - probs_np)
+                from PIL import ImageChops
+                targets_pil = Image.fromarray(targets_np)
+                probs_pil = Image.fromarray(probs_np)
+                abs_diff = ImageChops.difference(targets_pil, probs_pil)
+                abs_diff = np.array(abs_diff)
 
                 visuals = [probs_np, targets_np, abs_diff, obscured_probs_np]
             

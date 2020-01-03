@@ -20,5 +20,5 @@ from models.pretrained.BigGAN.biggan import BigGAN128
 model_dict = {
                 'deepdecodernet': DeepDecoderNet,
                 'stylegan': StyleGenerator,
-                'biggan': BigGAN128,
+                'biggan': BigGAN512,
              }
