@@ -56,6 +56,11 @@ def test(args):
         for name, param in model.named_parameters():
             if 'perturb' in name:
                 param.requires_grad = True
+
+                # Init perturbations weights to be tiny
+                # param.data /= 100.
+                # param.data.fill_(0.)
+                
                 trainable_params.append(param)
         print(f'Number of trainable params: {len(trainable_params)}')
     
