@@ -77,7 +77,6 @@ def test(args):
     elif 'perturbation' in args.loss_fn:
         # Perturbation network R. By default, uses pixel L1.
         # Sec 3.3: http://ganpaint.io/Bau_et_al_Semantic_Photo_Manipulation_preprint.pdf
-        reg_criterion = torch.nn.MSELoss().to(args.device)
         reg_loss_weight = args.reg_loss_weight
 
     # z_loss_fn = util.get_loss_fn(args.loss_fn, args)
@@ -154,9 +153,11 @@ def test(args):
 
                     z_loss = pixel_loss + perceptual_loss_weight * perceptual_loss
                 elif 'perturbation' in args.loss_fn:
-                    # TODO: create perturbation network R - make it copy G fine layer shapes - need it to do forward pass during model.forward
-                    # so first do model.forward of the usual model G on the high level layers, then replace with R? or interchange layers btw G and R and wrap the full model in a larger thing - where the G layers are frozen, but the R layers are not - I wonder if there's an easier way to do this so it's easy to retrofit any G - maybe if R copies all of G_finelayers, freezes itself on those params, then creates its own around each that's not frozen, that could work and the second forward pass is just R
-                    reg_loss = reg_criterion() # TODO
+                    reg_loss = torch.zeros(1, requires_grad=True).to(args.device)
+                    for name, param in model.named_parameters():
+                        if 'perturb' in name:
+                            delta = param - 1
+                            reg_loss += 0.5 * torch.pow(delta, 2).sum()
 
                     z_loss = pixel_loss + reg_loss_weight * reg_loss
                 else:
@@ -197,10 +198,11 @@ def test(args):
 
                 obscured_z_loss = obscured_pixel_loss + perceptual_loss_weight * obscured_perceptual_loss
             elif 'pertubation' in args.loss_fn:
-                reg_loss = reg_criterion() # TODO
-                z_loss = pixel_loss + reg_loss_weight * reg_loss
+                full_z_loss = full_pixel_loss + reg_loss_weight * reg_loss
+                obscured_z_loss = obscured_pixel_loss + reg_loss_weight * reg_loss
             else:
                 full_z_loss = full_pixel_loss
+                obscured_z_loss = obscured_pixel_loss
             
             """# TODO: z_loss is not always MSE anymore - figure out desired metric
             if z_loss < max_z_test_loss:
