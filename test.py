@@ -57,6 +57,7 @@ def test(args):
             if 'perturb' in name:
                 param.requires_grad = True
                 trainable_params.append(param)
+        print(f'Number of trainable params: {len(trainable_params)}')
     
     model = nn.DataParallel(model, args.gpu_ids)
     model = model.to(args.device)
@@ -112,7 +113,7 @@ def test(args):
          
         for _, z_test_target, mask in loader:
             logger.start_iter()
-           
+            print(f'perturb layer', model.module.generator.perturb_4.weight) 
             if torch.cuda.is_available():
                 mask = mask.cuda()
                 z_test = z_test.cuda()
@@ -157,8 +158,7 @@ def test(args):
                     for name, param in model.named_parameters():
                         if 'perturb' in name:
                             delta = param - 1
-                            reg_loss += 0.5 * torch.pow(delta, 2).sum()
-
+                            reg_loss += torch.pow(delta, 2).sum()
                     z_loss = pixel_loss + reg_loss_weight * reg_loss
                 else:
                     z_loss = pixel_loss

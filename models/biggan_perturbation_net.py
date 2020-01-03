@@ -314,7 +314,7 @@ class Generator(nn.Module):
         z = self.bn(z, truncation)
         z = self.relu(z)
         z = self.conv_to_rgb(z)
-        z = self.perturb_4(z) # ADDED
+        z = self.perturb_4(z)
         z = z[:, :3, ...]
         z = self.tanh(z)
         return z
