@@ -130,7 +130,8 @@ def test(args):
             
             if 'perturbation' in args.loss_fn:
                 # With backprop on only trainable parameters in perturbation net
-                z_optimizer = util.get_optimizer(trainable_params, args)
+                params = trainable_params + [z_test.requires_grad_()]
+                z_optimizer = util.get_optimizer(params, args)
             else:
                 # With backprop on only the input z, run one step of z-test and get z-loss
                 z_optimizer = util.get_optimizer([z_test.requires_grad_()], args)
