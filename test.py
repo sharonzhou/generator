@@ -197,7 +197,7 @@ def test(args):
                 obscured_perceptual_loss = perceptual_criterion(z_probs_obscured_features, z_test_obscured_features)
 
                 obscured_z_loss = obscured_pixel_loss + perceptual_loss_weight * obscured_perceptual_loss
-            elif 'pertubation' in args.loss_fn:
+            elif 'perturbation' in args.loss_fn:
                 full_z_loss = full_pixel_loss + reg_loss_weight * reg_loss
                 obscured_z_loss = obscured_pixel_loss + reg_loss_weight * reg_loss
             else:
