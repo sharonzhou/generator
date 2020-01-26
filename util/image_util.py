@@ -77,7 +77,8 @@ def normalize_to_image(img):
     if img.min() >= 0 and img.max() <= 1:
         img *= 255.
     else:
-        img = np.clip(((img + 1) / 2.0) * 256, 0, 255)
+        img = cv2.normalize(img, None, alpha = 0, beta = 255, norm_type = cv2.NORM_MINMAX, dtype = cv2.CV_32F)
+        #img = np.clip(((img + 1) / 2.0) * 256, 0, 255)
     return img
 
 def convert_image_from_tensor(image):

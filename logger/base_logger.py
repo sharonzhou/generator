@@ -182,7 +182,10 @@ class BaseLogger(object):
             tag = f'{phase}/{title}'
             if unique_suffix is not None:
                 tag += '_{}'.format(unique_suffix)
-            
+          
+            # If channel dimension is not first, then move to front
+            if visuals_np.shape[0] != 3 and visuals_np.shape[2] == 3:
+                visuals_np = np.transpose(visuals_np, (2, 0, 1))
             self.summary_writer.add_image(tag, np.uint8(visuals_np), self.global_step)
 
     def write(self, message, print_to_stdout=True):

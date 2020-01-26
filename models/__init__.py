@@ -2,4 +2,12 @@ from .base_net import BaseNet
 from .deep_decoder_net import DeepDecoderNet
 from .stylegan import StyleGenerator
 from .vgg_feature_extractor import VGGFeatureExtractor
-from .biggan_perturbation_net import BigGANPerturbationNet
+#from .biggan_perturbation_net import BigGANPerturbationNet
+from .resnet18 import ResNet18
+from .resnet152 import ResNet152
+from .resnext101 import ResNeXt101
+from .densenet201 import DenseNet201
+from .vgg19_bn import VGG19_BN
+from .vgg19 import VGG19
+from .wgan import WGANGPGenerator
+from .began import BEGANGenerator

@@ -3,10 +3,13 @@ import torch.utils.data as data
 
 from .dataset import Dataset
 from .z_test_dataset import ZTestDataset
+from .invert_dataset import InvertDataset
 
 def get_loader(args, phase='train'):
     if phase == 'train':
         dataset = Dataset(args, phase)
+    elif phase == 'invert':
+        dataset = InvertDataset(args)
     else:
         dataset = ZTestDataset(args)
 
