@@ -16,9 +16,17 @@ from models.deep_decoder_net import DeepDecoderNet
 from models.stylegan import StyleGenerator
 from models.pretrained.BigGAN.biggan import BigGAN128
 
+from models.resnet18 import ResNet18
+from models.densenet201 import DenseNet201
+
 # Make sure to add to this as you write models.
 model_dict = {
                 'deepdecodernet': DeepDecoderNet,
                 'stylegan': StyleGenerator,
                 'biggan': BigGAN512,
              }
+
+invert_model_dict = {
+                        'resnet18': ResNet18,
+                        'densenet201': DenseNet201,
+                    }

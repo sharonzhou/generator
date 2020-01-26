@@ -22,7 +22,7 @@ class TestArgParser(BaseArgParser):
                                  help='Metric used to determine which checkpoint is best.')
 
         # Learning rate args
-        self.parser.add_argument('--learning_rate', type=float, default=3e-3,
+        self.parser.add_argument('--learning_rate', type=float, default=1e-1,
                                  help='Initial learning rate.')
         self.parser.add_argument('--lr_scheduler', type=str, default='step', choices=('step', 'multi_step', 'plateau'),
                                  help='LR scheduler to use.')
@@ -46,6 +46,8 @@ class TestArgParser(BaseArgParser):
         self.parser.add_argument('--dropout_prob', type=float, default=0.0, help='Dropout probability.')
         self.parser.add_argument('--num_epochs', type=int, default=15000,
                                  help='Number of epochs to evaluate z test. If 0, evaluate forever / until convergence.')
+        self.parser.add_argument('--num_invert_epochs', type=int, default=1000,
+                                 help='Number of epochs to train inversion encoder model.')
 
         # Loss args
         self.parser.add_argument('--perceptual_loss_weight', type=float, default=10, help='Perceptual loss weight (vs. pixel loss)')
@@ -54,6 +56,7 @@ class TestArgParser(BaseArgParser):
                                  help='Loss function to use.')
         
         # Model args
+        self.parser.add_argument('--invert_model', type=str, choices=('ResNet18', 'ResNet152', 'ResNeXt101', 'VGG19_BN', 'VGG19', 'DenseNet201'), default='DenseNet201', help=('Inverter model architecture.'))
         self.parser.add_argument('--use_pretrained', action='store_true', help='If True, load a pretrained model from ckpt_path.')
 
         # Prediction args
@@ -66,5 +69,7 @@ class TestArgParser(BaseArgParser):
                                  help='Stop criteria: max number of epochs to run z-test for during the z-test training loop.')
         self.parser.add_argument('--steps_per_z_test_print', type=int, default=5,
                                  help='Number of epochs between running z-test print during the z-test training loop.')
-        self.parser.add_argument('--steps_per_z_test_visual', type=int, default=5,
-                                 help='Number of epochs between displaying z-test visuals during the z-test training loop.')
+        self.parser.add_argument('--steps_per_z_test_visual', type=int, default=5, help='Number of steps between each z test visual')
+        
+        # Z test sampling
+        self.parser.add_argument('--truncation', type=float, default=1.0, help='Truncation param')

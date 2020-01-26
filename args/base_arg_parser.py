@@ -18,7 +18,7 @@ class BaseArgParser(object):
                                  help='Name of run')
 
         # Model args
-        self.parser.add_argument('--model', type=str, choices=('DeepDecoderNet', 'StyleGenerator', 'BigGAN512'), default='BigGAN512',
+        self.parser.add_argument('--model', type=str, choices=('DeepDecoderNet', 'StyleGenerator', 'BigGAN512', 'WGAN-GP', 'BEGAN', 'ProGAN'), default='BigGAN512',
                                  help=('Model to use. Basic conv1x1 from the Deep Decoder paper,'
                                            + 'StyleGenerator from the StyleGAN paper, etc.'))
 
@@ -72,9 +72,12 @@ class BaseArgParser(object):
         args.start_iter = 0
         args.is_training = self.is_training
 
-        assert args.steps_per_save % args.batch_size == 0, 'Steps per save ({args.steps_per_save}) need to be a multiple of batch size ({args.batch_size}).'
-        assert args.steps_per_visual % args.batch_size == 0, 'Steps per visual ({args.steps_per_visual}) need to be a multiple of batch size ({args.batch_size}).'
-        assert args.steps_per_print % args.batch_size == 0, 'Steps per print ({args.steps_per_print}) need to be a multiple of batch size ({args.batch_size}).'
+        if args.steps_per_save % args.batch_size != 0:
+            args.steps_per_save = args.batch_size
+        if args.steps_per_visual % args.batch_size != 0:
+            args.steps_per_visual = args.batch_size
+        if args.steps_per_print % args.batch_size != 0:
+            args.steps_per_print = args.batch_size
 
         # Set up available GPUs
         args.gpu_ids = util.args_to_list(args.gpu_ids, allow_empty=True, arg_type=int, allow_negative=False)
